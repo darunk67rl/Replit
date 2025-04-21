@@ -1,0 +1,106 @@
+You are a top-tier product architect, full-stack developer, and UX designer in one. Help me build a working MVP for my AI-powered fintech app that unifies the following services for Indian users, with scope for global expansion:
+
+🔗 Core Features
+UPI Payments (India + Global support in future)
+
+Link bank accounts via UPI
+
+Send/receive money
+
+Scan & pay with QR codes
+
+Transaction history and monthly spending insights
+
+Insurance Management
+
+Compare and buy policies (health, term, car, etc.)
+
+Store policy details
+
+AI-powered renewal reminders & recommendation engine
+
+Investments & Wealth Management
+
+Mutual Funds, SIPs, Stocks, Gold, NPS
+
+Portfolio tracking dashboard
+
+AI robo-advisory with risk profile questionnaire
+
+Goal-based planning (e.g. "Buy a house in 5 years")
+
+Lending & Credit
+
+Personal, vehicle, home, gold, MSME loans
+
+Pre-approved loan offers
+
+Credit score tracking (via CIBIL/Experian)
+
+AI-driven Personal Finance Advisor
+
+Smart categorization of expenses (with charts)
+
+Monthly saving recommendations
+
+Notifications like: “Save ₹2,000 this week to reach your emergency fund goal faster.”
+
+Integrates insights from all modules
+
+💡 Additional Features
+Unified dashboard (wallet + policies + loans + investments)
+
+User profile with KYC and onboarding
+
+Notifications and alerts engine
+
+Basic AI chatbot for finance Q&A (later upgrade to agent-based system)
+
+📱 UI/UX Requirements
+Clean, mobile-first responsive design
+
+Figma screens for each module with user journey flows
+
+Simple onboarding with mobile OTP/KYC
+
+Dark mode (optional)
+
+💾 Tech Stack Suggestion
+Frontend: React (with TailwindCSS), React Native (mobile)
+
+Backend: FastAPI (Python) with LangChain + VectorDB (for AI features)
+
+Database: PostgreSQL + Firebase (auth, push notifications)
+
+Payments: Razorpay or Paytm UPI integration
+
+AI: OpenAI or similar API for chatbot + custom financial agent
+
+🧠 AI Use Cases
+Financial insights engine (LLM summarizing trends)
+
+Lead scoring & nudges for upselling policies/loans
+
+Personalized saving/investment plan generator
+
+🧪 MVP Scope
+Create:
+
+At least 1 working module (e.g., UPI + finance advisor)
+
+Basic UI for all features
+
+Stub/mock APIs for modules like Insurance/Investments
+
+A Docker-based local deploy setup
+
+🧱 Output Needed
+MVP folder structure with working code
+
+README file with run instructions
+
+Figma design screens (or layout JSONs)
+
+AI prompt templates for the personal finance advisor
+
+Sample user flow with mocked data
