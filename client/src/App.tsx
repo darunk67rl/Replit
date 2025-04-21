@@ -33,17 +33,22 @@ function ProtectedRoute({ component: Component }: { component: React.FC }) {
   return isAuthenticated ? <Component /> : null;
 }
 
+// Import all our pages
+import Loans from "@/pages/loans";
+import AiAdvisor from "@/pages/ai-advisor";
+
 function Router() {
   return (
     <Switch>
       <Route path="/auth/login" component={LoginPage} />
       <Route path="/auth/otp-verification" component={OtpVerification} />
       <Route path="/" component={Home} />
-      <Route path="/investments" component={Home} />
+      <Route path="/investments" component={Investments} />
       <Route path="/payments" component={Home} />
       <Route path="/finance" component={Home} />
       <Route path="/profile" component={Home} />
-      <Route path="/ai-advisor" component={Home} />
+      <Route path="/ai-advisor" component={AiAdvisor} />
+      <Route path="/loans" component={Loans} />
       <Route component={NotFound} />
     </Switch>
   );
