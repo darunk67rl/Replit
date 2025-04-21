@@ -1,84 +1,60 @@
-import { useState, useEffect } from "react";
-import { Switch, Route, useLocation } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { Switch, Route } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ThemeProvider } from "./contexts/ThemeContext";
-import { AuthProvider } from "./contexts/AuthContext";
-import Home from "@/pages/Home";
-import SendMoney from "@/pages/SendMoney";
-import AiAdvisor from "@/pages/AiAdvisor";
-import Investments from "@/pages/Investments";
-import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
-import Header from "@/components/Header";
-import BottomNavigation from "@/components/BottomNavigation";
+import Login from "@/pages/auth/login";
+import OtpVerification from "@/pages/auth/otp-verification";
+import Home from "@/pages/home";
+import Payments from "@/pages/payments";
+import Finance from "@/pages/finance";
+import Profile from "@/pages/profile";
+import { useAuth } from "@/contexts/auth-context";
+import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
+import { useLocation, useRoute } from "wouter";
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const [location, setLocation] = useLocation();
-  const storedUser = localStorage.getItem("user");
-  const isAuthenticated = !!storedUser;
+function ProtectedRoute({ component: Component }: { component: React.FC }) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
+  const [isCurrentRoute] = useRoute("/auth/login");
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      setLocation("/login");
+    if (!isLoading && !isAuthenticated && !isCurrentRoute) {
+      setLocation("/auth/login");
     }
-  }, [isAuthenticated, setLocation]);
+  }, [isAuthenticated, isLoading, isCurrentRoute, setLocation]);
 
-  return isAuthenticated ? <>{children}</> : null;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return isAuthenticated ? <Component /> : null;
 }
 
-function AppLayout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
-  const showHeaderAndNav = location !== "/login";
-
+function Router() {
   return (
-    <>
-      {showHeaderAndNav && <Header />}
-      <main className="pt-16 pb-20">{children}</main>
-      {showHeaderAndNav && <BottomNavigation />}
-    </>
+    <Switch>
+      <Route path="/auth/login" component={Login} />
+      <Route path="/auth/otp-verification" component={OtpVerification} />
+      <Route path="/" component={() => <ProtectedRoute component={Home} />} />
+      <Route path="/payments" component={() => <ProtectedRoute component={Payments} />} />
+      <Route path="/finance" component={() => <ProtectedRoute component={Finance} />} />
+      <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
+      <Route component={NotFound} />
+    </Switch>
   );
 }
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <AuthProvider>
-          <TooltipProvider>
-            <AppLayout>
-              <Switch>
-                <Route path="/login" component={Login} />
-                <Route path="/">
-                  <ProtectedRoute>
-                    <Home />
-                  </ProtectedRoute>
-                </Route>
-                <Route path="/send-money">
-                  <ProtectedRoute>
-                    <SendMoney />
-                  </ProtectedRoute>
-                </Route>
-                <Route path="/advisor">
-                  <ProtectedRoute>
-                    <AiAdvisor />
-                  </ProtectedRoute>
-                </Route>
-                <Route path="/investments">
-                  <ProtectedRoute>
-                    <Investments />
-                  </ProtectedRoute>
-                </Route>
-                <Route component={NotFound} />
-              </Switch>
-            </AppLayout>
-            <Toaster />
-          </TooltipProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <TooltipProvider>
+      <Toaster />
+      <Router />
+    </TooltipProvider>
   );
 }
 

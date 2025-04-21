@@ -1,619 +1,572 @@
 import { 
-  users, type User, type InsertUser,
-  bankAccounts, type BankAccount, type InsertBankAccount,
-  transactions, type Transaction, type InsertTransaction,
-  investments, type Investment, type InsertInvestment,
-  insurances, type Insurance, type InsertInsurance,
-  aiInsights, type AiInsight, type InsertAiInsight
+  User, 
+  Transaction, 
+  UpiContact, 
+  Investment, 
+  InsurancePolicy, 
+  FinancialGoal,
+  ChatMessage,
+  UserProfile,
+  users,
+  transactions,
+  upiContacts,
+  investments,
+  insurancePolicies,
+  financialGoals,
+  chatMessages,
+  InsertUser,
+  InsertTransaction,
+  InsertUpiContact,
+  InsertInvestment,
+  InsertInsurancePolicy,
+  InsertFinancialGoal,
+  InsertChatMessage 
 } from "@shared/schema";
+import { generateUniqueId } from "../client/src/lib/utils";
+import { db } from "./db";
+import { eq, desc, and, gte } from "drizzle-orm";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
 
+// Interface for storage operations
 export interface IStorage {
-  // User methods
+  // User management
   getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  getUserByPhone(phone: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  verifyUser(id: number): Promise<User>;
-  completeKyc(id: number): Promise<User>;
+  getUserByPhoneNumber(phoneNumber: string): Promise<User | undefined>;
+  createUser(user: Omit<User, "id">): Promise<User>;
+  getAllUsers(): Promise<User[]>;
+  getUserProfile(): Promise<UserProfile>;
 
-  // Bank Account methods
-  getBankAccounts(userId: number): Promise<BankAccount[]>;
-  getBankAccount(id: number): Promise<BankAccount | undefined>;
-  getDefaultBankAccount(userId: number): Promise<BankAccount | undefined>;
-  createBankAccount(account: InsertBankAccount): Promise<BankAccount>;
-  updateBankAccountBalance(id: number, amount: number): Promise<BankAccount>;
-  setDefaultBankAccount(id: number, userId: number): Promise<BankAccount>;
+  // Transaction management
+  getRecentTransactions(limit?: number): Promise<Transaction[]>;
+  getTransactions(options: { timeframe?: string, category?: string }): Promise<Transaction[]>;
+  createTransaction(transaction: Omit<Transaction, "id">): Promise<Transaction>;
 
-  // Transaction methods
-  getTransactions(userId: number, limit?: number): Promise<Transaction[]>;
-  getTransactionsByCategory(userId: number, category: string): Promise<Transaction[]>;
-  getTransaction(id: number): Promise<Transaction | undefined>;
-  createTransaction(transaction: InsertTransaction): Promise<Transaction>;
-  getMonthlySpending(userId: number): Promise<{category: string, amount: number}[]>;
-
-  // Investment methods
-  getInvestments(userId: number): Promise<Investment[]>;
-  getInvestment(id: number): Promise<Investment | undefined>;
-  createInvestment(investment: InsertInvestment): Promise<Investment>;
-  updateInvestmentValue(id: number, currentValue: number): Promise<Investment>;
-  getPortfolioSummary(userId: number): Promise<{
-    totalValue: number,
-    totalInvested: number,
-    totalReturns: number,
-    returnsPercentage: number
-  }>;
-
-  // Insurance methods
-  getInsurances(userId: number): Promise<Insurance[]>;
-  getInsurance(id: number): Promise<Insurance | undefined>;
-  createInsurance(insurance: InsertInsurance): Promise<Insurance>;
-  getExpiringInsurances(userId: number, daysThreshold: number): Promise<Insurance[]>;
-
-  // AI Insights methods
-  getAiInsights(userId: number, limit?: number): Promise<AiInsight[]>;
-  createAiInsight(insight: InsertAiInsight): Promise<AiInsight>;
-  markInsightAsRead(id: number): Promise<AiInsight>;
+  // UPI contacts
+  getUpiContacts(): Promise<UpiContact[]>;
+  getUpiContactById(id: string): Promise<UpiContact | undefined>;
+  
+  // Investments
+  getInvestments(): Promise<Investment[]>;
+  
+  // Insurance
+  getInsurancePolicies(): Promise<InsurancePolicy[]>;
+  
+  // Financial Goals
+  getFinancialGoals(): Promise<FinancialGoal[]>;
+  
+  // AI Chat History
+  getChatHistory(): Promise<ChatMessage[]>;
+  saveChatMessage(message: Omit<ChatMessage, "id">): Promise<ChatMessage>;
+  
+  // Session store
+  sessionStore: any;
 }
 
+// In-memory implementation
 export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private bankAccounts: Map<number, BankAccount>;
-  private transactions: Map<number, Transaction>;
-  private investments: Map<number, Investment>;
-  private insurances: Map<number, Insurance>;
-  private aiInsights: Map<number, AiInsight>;
+  private users: User[] = [];
+  private transactions: Transaction[] = [];
+  private upiContacts: UpiContact[] = [];
+  private investments: Investment[] = [];
+  private insurancePolicies: InsurancePolicy[] = [];
+  private financialGoals: FinancialGoal[] = [];
+  private chatMessages: ChatMessage[] = [];
+  private nextId = 1;
   
-  private userId: number;
-  private bankAccountId: number;
-  private transactionId: number;
-  private investmentId: number;
-  private insuranceId: number;
-  private aiInsightId: number;
+  public sessionStore: session.SessionStore;
 
   constructor() {
-    this.users = new Map();
-    this.bankAccounts = new Map();
-    this.transactions = new Map();
-    this.investments = new Map();
-    this.insurances = new Map();
-    this.aiInsights = new Map();
-    
-    this.userId = 1;
-    this.bankAccountId = 1;
-    this.transactionId = 1;
-    this.investmentId = 1;
-    this.insuranceId = 1;
-    this.aiInsightId = 1;
+    this.initializeData();
+    const MemoryStore = require('memorystore')(session);
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000, // prune expired entries every 24h
+    });
+  }
 
-    // Initialize with a demo user
-    const demoUser: User = {
-      id: this.userId++,
-      username: "aditya",
-      password: "password",
-      name: "Aditya Sharma",
-      phone: "9876543210",
-      email: "aditya@example.com",
-      isVerified: true,
-      kycComplete: true
-    };
-    this.users.set(demoUser.id, demoUser);
+  private initializeData() {
+    // Sample user
+    this.users.push({
+      id: this.nextId++,
+      username: "rahul_kumar",
+      name: "Rahul Kumar",
+      phoneNumber: "+91 98765 43210",
+      email: "rahul.k@example.com",
+      balance: 24500,
+      upiId: "rahul@okaxis",
+      isKycVerified: true,
+    });
 
-    // Initialize with some bank accounts
-    const hdfcAccount: BankAccount = {
-      id: this.bankAccountId++,
-      userId: demoUser.id,
-      bankName: "HDFC Bank",
-      accountNumber: "****6789",
-      ifscCode: "HDFC0001234",
-      accountType: "Savings",
-      upiId: "aditya@hdfcbank",
-      balance: 25000,
-      isDefault: true
-    };
-    this.bankAccounts.set(hdfcAccount.id, hdfcAccount);
-
-    const sbiAccount: BankAccount = {
-      id: this.bankAccountId++,
-      userId: demoUser.id,
-      bankName: "SBI Bank",
-      accountNumber: "****4321",
-      ifscCode: "SBIN0005678",
-      accountType: "Savings",
-      upiId: "aditya@sbi",
-      balance: 15000,
-      isDefault: false
-    };
-    this.bankAccounts.set(sbiAccount.id, sbiAccount);
-
-    // Initialize with some transactions
-    const transactions: InsertTransaction[] = [
+    // Sample transactions
+    const sampleTransactions: Omit<Transaction, "id">[] = [
       {
-        userId: demoUser.id,
-        amount: 1299,
-        type: "debit",
-        category: "shopping",
-        description: "Amazon",
-        recipient: "Amazon",
-        sender: "Aditya Sharma",
-        accountId: hdfcAccount.id,
-        status: "completed",
-        paymentMethod: "upi"
+        merchant: "Amazon Shopping",
+        date: new Date("2023-10-12T16:30:00"),
+        amount: -2450,
+        type: "UPI",
+        category: "Shopping",
+        description: "Electronics purchase"
       },
       {
-        userId: demoUser.id,
-        amount: 5000,
-        type: "credit",
-        category: "transfer",
-        description: "Transfer from Rahul",
-        recipient: "Aditya Sharma",
-        sender: "Rahul Mehta",
-        accountId: hdfcAccount.id,
-        status: "completed",
-        paymentMethod: "upi"
+        merchant: "Anil Sharma",
+        date: new Date("2023-10-10T12:15:00"),
+        amount: 1200,
+        type: "UPI",
+        category: "Transfer",
+        description: "Payment received"
       },
       {
-        userId: demoUser.id,
-        amount: 450,
-        type: "debit",
-        category: "food",
-        description: "Swiggy",
-        recipient: "Swiggy",
-        sender: "Aditya Sharma",
-        accountId: hdfcAccount.id,
-        status: "completed",
-        paymentMethod: "upi"
+        merchant: "Swiggy Food",
+        date: new Date("2023-10-09T20:45:00"),
+        amount: -450,
+        type: "UPI",
+        category: "Food",
+        description: "Dinner order"
       },
       {
-        userId: demoUser.id,
-        amount: 3500,
-        type: "debit",
-        category: "entertainment",
-        description: "Movie tickets",
-        recipient: "PVR Cinemas",
-        sender: "Aditya Sharma",
-        accountId: sbiAccount.id,
-        status: "completed",
-        paymentMethod: "card"
+        merchant: "HDFC Credit Card",
+        date: new Date("2023-10-05T10:30:00"),
+        amount: -5000,
+        type: "Bank Transfer",
+        category: "Bills",
+        description: "Credit card payment"
       },
       {
-        userId: demoUser.id,
-        amount: 6500,
-        type: "debit",
-        category: "shopping",
-        description: "Flipkart",
-        recipient: "Flipkart",
-        sender: "Aditya Sharma",
-        accountId: hdfcAccount.id,
-        status: "completed",
-        paymentMethod: "upi"
+        merchant: "Reliance Jio",
+        date: new Date("2023-10-03T14:20:00"),
+        amount: -599,
+        type: "Auto Pay",
+        category: "Bills",
+        description: "Mobile recharge"
+      },
+      {
+        merchant: "Movie Tickets",
+        date: new Date("2023-09-28T18:45:00"),
+        amount: -800,
+        type: "UPI",
+        category: "Entertainment",
+        description: "Weekend movie"
       }
     ];
 
-    // Add transactions
-    transactions.forEach((txn) => {
-      const now = new Date();
-      const date = new Date(now.setDate(now.getDate() - Math.floor(Math.random() * 15)));
-      
-      const transaction: Transaction = {
-        ...txn,
-        id: this.transactionId++,
-        date
-      };
-      
-      this.transactions.set(transaction.id, transaction);
+    sampleTransactions.forEach(tx => {
+      this.transactions.push({
+        ...tx,
+        id: this.nextId++
+      });
     });
 
-    // Initialize with some investments
-    const investments: InsertInvestment[] = [
+    // Sample UPI contacts
+    const sampleContacts: Omit<UpiContact, "id">[] = [
       {
-        userId: demoUser.id,
+        name: "Amit Kumar",
+        upiId: "amit@okbank",
+        phoneNumber: "+91 98765 12345",
+        isFrequent: true
+      },
+      {
+        name: "Sneha Patel",
+        upiId: "sneha@yesbank",
+        phoneNumber: "+91 91265 78901",
+        isFrequent: true
+      },
+      {
+        name: "Raj Gupta",
+        upiId: "raj@okaxis",
+        phoneNumber: "+91 88765 45678",
+        isFrequent: true
+      },
+      {
+        name: "Priya Singh",
+        upiId: "priya@sbi",
+        phoneNumber: "+91 77865 23456",
+        isFrequent: true
+      }
+    ];
+
+    sampleContacts.forEach(contact => {
+      this.upiContacts.push({
+        ...contact,
+        id: this.nextId++
+      });
+    });
+
+    // Sample investments
+    const sampleInvestments: Omit<Investment, "id">[] = [
+      {
+        name: "HDFC Mid Cap Opportunities",
         type: "mutual_fund",
-        name: "HDFC Mid-Cap Opportunities Fund",
-        investedAmount: 105000,
-        currentValue: 125450,
-        returns: 20450,
-        units: 1250.75,
-        averagePrice: 84.75,
-        isSIP: true,
-        sipAmount: 5000
+        value: 15650,
+        changePercentage: 12.4,
+        investedAmount: 12000,
+        investmentDate: new Date("2022-06-15")
       },
       {
-        userId: demoUser.id,
+        name: "Reliance Industries",
         type: "stock",
-        name: "Reliance Industries Ltd.",
-        investedAmount: 94500,
-        currentValue: 102600,
-        returns: 8100,
-        units: 45,
-        averagePrice: 2100,
-        isSIP: false,
-        sipAmount: null
+        value: 8920,
+        changePercentage: 5.2,
+        investedAmount: 8500,
+        investmentDate: new Date("2023-01-10")
       },
       {
-        userId: demoUser.id,
-        type: "gold",
         name: "Digital Gold",
-        investedAmount: 78000,
-        currentValue: 76500,
-        returns: -1500,
-        units: 15,
-        averagePrice: 5200,
-        isSIP: false,
-        sipAmount: null
+        type: "gold",
+        value: 5200,
+        changePercentage: -1.8,
+        investedAmount: 5300,
+        investmentDate: new Date("2023-03-22")
+      },
+      {
+        name: "ICICI Bank FD",
+        type: "fd",
+        value: 5030,
+        changePercentage: 3.2,
+        investedAmount: 5000,
+        investmentDate: new Date("2023-02-05")
       }
     ];
 
-    // Add investments
-    investments.forEach((inv) => {
-      const investment: Investment = {
-        ...inv,
-        id: this.investmentId++,
-        lastUpdated: new Date()
-      };
-      
-      this.investments.set(investment.id, investment);
+    sampleInvestments.forEach(investment => {
+      this.investments.push({
+        ...investment,
+        id: this.nextId++
+      });
     });
 
-    // Initialize with some insurances
-    const today = new Date();
-    const thirtyDaysLater = new Date();
-    thirtyDaysLater.setDate(today.getDate() + 30);
-    const oneYearLater = new Date();
-    oneYearLater.setFullYear(today.getFullYear() + 1);
-    
-    const insurances: InsertInsurance[] = [
+    // Sample insurance policies
+    const sampleInsurances: Omit<InsurancePolicy, "id">[] = [
       {
-        userId: demoUser.id,
+        name: "Family Floater",
         type: "health",
-        provider: "HDFC ERGO",
-        policyNumber: "H12345678",
-        coverAmount: 500000,
         premium: 15000,
-        frequency: "yearly",
-        startDate: today,
-        endDate: thirtyDaysLater,
-        status: "active",
-        details: { familyCovered: true, maternity: false }
+        coverage: 500000,
+        expiryDate: new Date(new Date().setDate(new Date().getDate() + 43)), // 43 days from now
+        policyNumber: "HLT123456789",
+        provider: "HDFC ERGO"
       },
       {
-        userId: demoUser.id,
-        type: "term",
-        provider: "LIC",
-        policyNumber: "T12345678",
-        coverAmount: 10000000,
-        premium: 25000,
-        frequency: "yearly",
-        startDate: today,
-        endDate: oneYearLater,
-        status: "active",
-        details: { riders: ["accidental", "critical illness"] }
+        name: "Comprehensive Car Insurance",
+        type: "vehicle",
+        premium: 8000,
+        coverage: 150000,
+        expiryDate: new Date(new Date().setMonth(new Date().getMonth() + 6)), // 6 months from now
+        policyNumber: "CAR987654321",
+        provider: "ICICI Lombard"
       }
     ];
 
-    // Add insurances
-    insurances.forEach((ins) => {
-      const insurance: Insurance = {
-        ...ins,
-        id: this.insuranceId++
-      };
-      
-      this.insurances.set(insurance.id, insurance);
+    sampleInsurances.forEach(insurance => {
+      this.insurancePolicies.push({
+        ...insurance,
+        id: this.nextId++
+      });
     });
 
-    // Initialize with some AI insights
-    const insights: InsertAiInsight[] = [
+    // Sample financial goals
+    const sampleGoals: Omit<FinancialGoal, "id">[] = [
       {
-        userId: demoUser.id,
-        type: "savings",
-        title: "Save ₹2,000 this week",
-        description: "You're close to your emergency fund goal. A little push can help you reach it faster.",
-        priority: "high",
-        isRead: false
+        name: "Emergency Fund",
+        targetAmount: 100000,
+        currentAmount: 65000,
+        targetDate: new Date(new Date().setMonth(new Date().getMonth() + 6)),
+        type: "emergency"
       },
       {
-        userId: demoUser.id,
-        type: "insurance",
-        title: "Your HDFC policy expires soon",
-        description: "Health insurance renewal due in 15 days. Tap to review your options.",
-        priority: "medium",
-        isRead: false
+        name: "New Car",
+        targetAmount: 800000,
+        currentAmount: 250000,
+        targetDate: new Date(new Date().setFullYear(new Date().getFullYear() + 2)),
+        type: "car"
       }
     ];
 
-    // Add AI insights
-    insights.forEach((insight) => {
-      const aiInsight: AiInsight = {
-        ...insight,
-        id: this.aiInsightId++,
-        date: new Date()
-      };
-      
-      this.aiInsights.set(aiInsight.id, aiInsight);
+    sampleGoals.forEach(goal => {
+      this.financialGoals.push({
+        ...goal,
+        id: this.nextId++
+      });
     });
   }
 
   // User methods
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    return this.users.find(user => user.id === id);
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async getUserByPhoneNumber(phoneNumber: string): Promise<User | undefined> {
+    return this.users.find(user => user.phoneNumber === phoneNumber);
   }
 
-  async getUserByPhone(phone: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.phone === phone,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userId++;
-    const user: User = { ...insertUser, id, isVerified: false, kycComplete: false };
-    this.users.set(id, user);
+  async createUser(userData: Omit<User, "id">): Promise<User> {
+    const user: User = {
+      ...userData,
+      id: this.nextId++
+    };
+    this.users.push(user);
     return user;
   }
 
-  async verifyUser(id: number): Promise<User> {
-    const user = await this.getUser(id);
-    if (!user) throw new Error("User not found");
-    
-    user.isVerified = true;
-    this.users.set(id, user);
-    return user;
+  async getAllUsers(): Promise<User[]> {
+    return [...this.users];
   }
 
-  async completeKyc(id: number): Promise<User> {
-    const user = await this.getUser(id);
-    if (!user) throw new Error("User not found");
-    
-    user.kycComplete = true;
-    this.users.set(id, user);
-    return user;
-  }
-
-  // Bank Account methods
-  async getBankAccounts(userId: number): Promise<BankAccount[]> {
-    return Array.from(this.bankAccounts.values()).filter(
-      (account) => account.userId === userId
-    );
-  }
-
-  async getBankAccount(id: number): Promise<BankAccount | undefined> {
-    return this.bankAccounts.get(id);
-  }
-
-  async getDefaultBankAccount(userId: number): Promise<BankAccount | undefined> {
-    return Array.from(this.bankAccounts.values()).find(
-      (account) => account.userId === userId && account.isDefault
-    );
-  }
-
-  async createBankAccount(account: InsertBankAccount): Promise<BankAccount> {
-    const id = this.bankAccountId++;
-    const bankAccount: BankAccount = { ...account, id };
-    
-    // If this is the first account or is marked as default
-    if (bankAccount.isDefault) {
-      // Make sure other accounts for this user are not default
-      for (const [existingId, existingAccount] of this.bankAccounts.entries()) {
-        if (existingAccount.userId === bankAccount.userId && existingAccount.isDefault) {
-          existingAccount.isDefault = false;
-          this.bankAccounts.set(existingId, existingAccount);
-        }
-      }
-    }
-    
-    this.bankAccounts.set(id, bankAccount);
-    return bankAccount;
-  }
-
-  async updateBankAccountBalance(id: number, amount: number): Promise<BankAccount> {
-    const account = await this.getBankAccount(id);
-    if (!account) throw new Error("Bank account not found");
-    
-    account.balance += amount;
-    this.bankAccounts.set(id, account);
-    return account;
-  }
-
-  async setDefaultBankAccount(id: number, userId: number): Promise<BankAccount> {
-    // First, unset default for all user accounts
-    for (const [existingId, existingAccount] of this.bankAccounts.entries()) {
-      if (existingAccount.userId === userId && existingAccount.isDefault) {
-        existingAccount.isDefault = false;
-        this.bankAccounts.set(existingId, existingAccount);
-      }
-    }
-    
-    // Then set the new default
-    const account = await this.getBankAccount(id);
-    if (!account) throw new Error("Bank account not found");
-    
-    account.isDefault = true;
-    this.bankAccounts.set(id, account);
-    return account;
+  async getUserProfile(): Promise<UserProfile> {
+    // Return a profile based on the first user for demo
+    const user = this.users[0];
+    return {
+      userId: user.id,
+      name: user.name,
+      age: 32, // Mocked age
+      income: 85000, // Mocked monthly income
+      riskProfile: "moderate",
+      goals: this.financialGoals.map(goal => ({
+        type: goal.type,
+        targetAmount: goal.targetAmount,
+        timeframe: Math.ceil((goal.targetDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24 * 30)) // months
+      }))
+    };
   }
 
   // Transaction methods
-  async getTransactions(userId: number, limit?: number): Promise<Transaction[]> {
-    const userTransactions = Array.from(this.transactions.values())
-      .filter((transaction) => transaction.userId === userId)
-      .sort((a, b) => b.date.getTime() - a.date.getTime());
-    
-    return limit ? userTransactions.slice(0, limit) : userTransactions;
+  async getRecentTransactions(limit: number = 10): Promise<Transaction[]> {
+    return [...this.transactions]
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .slice(0, limit);
   }
 
-  async getTransactionsByCategory(userId: number, category: string): Promise<Transaction[]> {
-    return Array.from(this.transactions.values())
-      .filter((transaction) => transaction.userId === userId && transaction.category === category)
-      .sort((a, b) => b.date.getTime() - a.date.getTime());
-  }
-
-  async getTransaction(id: number): Promise<Transaction | undefined> {
-    return this.transactions.get(id);
-  }
-
-  async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
-    const id = this.transactionId++;
-    const newTransaction: Transaction = { 
-      ...transaction, 
-      id,
-      date: new Date()
-    };
+  async getTransactions(options: { timeframe?: string, category?: string } = {}): Promise<Transaction[]> {
+    let filteredTransactions = [...this.transactions];
     
-    this.transactions.set(id, newTransaction);
-    
-    // Update bank account balance
-    if (transaction.accountId) {
-      const amount = transaction.type === "credit" ? transaction.amount : -transaction.amount;
-      await this.updateBankAccountBalance(transaction.accountId, amount);
+    if (options.timeframe) {
+      const now = new Date();
+      let startDate: Date;
+      
+      switch (options.timeframe) {
+        case 'week':
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+          break;
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+          break;
+        case 'year':
+          startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+          break;
+        default:
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+      }
+      
+      filteredTransactions = filteredTransactions.filter(tx => tx.date >= startDate);
     }
     
-    return newTransaction;
-  }
-
-  async getMonthlySpending(userId: number): Promise<{category: string, amount: number}[]> {
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    
-    const userTransactions = Array.from(this.transactions.values())
-      .filter((transaction) => 
-        transaction.userId === userId && 
-        transaction.type === "debit" &&
-        transaction.date >= monthStart
+    if (options.category) {
+      filteredTransactions = filteredTransactions.filter(tx => 
+        tx.category.toLowerCase() === options.category?.toLowerCase()
       );
-    
-    const categorySpending = new Map<string, number>();
-    
-    for (const transaction of userTransactions) {
-      const currentAmount = categorySpending.get(transaction.category) || 0;
-      categorySpending.set(transaction.category, currentAmount + transaction.amount);
     }
     
-    return Array.from(categorySpending.entries()).map(([category, amount]) => ({
-      category,
-      amount
-    }));
+    return filteredTransactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+  }
+
+  async createTransaction(transactionData: Omit<Transaction, "id">): Promise<Transaction> {
+    const transaction: Transaction = {
+      ...transactionData,
+      id: this.nextId++
+    };
+    this.transactions.push(transaction);
+    return transaction;
+  }
+
+  // UPI contacts methods
+  async getUpiContacts(): Promise<UpiContact[]> {
+    return [...this.upiContacts];
+  }
+
+  async getUpiContactById(id: string): Promise<UpiContact | undefined> {
+    return this.upiContacts.find(contact => contact.id.toString() === id);
   }
 
   // Investment methods
-  async getInvestments(userId: number): Promise<Investment[]> {
-    return Array.from(this.investments.values())
-      .filter((investment) => investment.userId === userId);
-  }
-
-  async getInvestment(id: number): Promise<Investment | undefined> {
-    return this.investments.get(id);
-  }
-
-  async createInvestment(investment: InsertInvestment): Promise<Investment> {
-    const id = this.investmentId++;
-    const newInvestment: Investment = { 
-      ...investment, 
-      id,
-      lastUpdated: new Date()
-    };
-    
-    this.investments.set(id, newInvestment);
-    return newInvestment;
-  }
-
-  async updateInvestmentValue(id: number, currentValue: number): Promise<Investment> {
-    const investment = await this.getInvestment(id);
-    if (!investment) throw new Error("Investment not found");
-    
-    investment.currentValue = currentValue;
-    investment.returns = currentValue - investment.investedAmount;
-    investment.lastUpdated = new Date();
-    
-    this.investments.set(id, investment);
-    return investment;
-  }
-
-  async getPortfolioSummary(userId: number): Promise<{
-    totalValue: number,
-    totalInvested: number,
-    totalReturns: number,
-    returnsPercentage: number
-  }> {
-    const userInvestments = await this.getInvestments(userId);
-    
-    const totalValue = userInvestments.reduce((sum, inv) => sum + inv.currentValue, 0);
-    const totalInvested = userInvestments.reduce((sum, inv) => sum + inv.investedAmount, 0);
-    const totalReturns = totalValue - totalInvested;
-    const returnsPercentage = totalInvested > 0 ? (totalReturns / totalInvested) * 100 : 0;
-    
-    return {
-      totalValue,
-      totalInvested,
-      totalReturns,
-      returnsPercentage
-    };
+  async getInvestments(): Promise<Investment[]> {
+    return [...this.investments];
   }
 
   // Insurance methods
-  async getInsurances(userId: number): Promise<Insurance[]> {
-    return Array.from(this.insurances.values())
-      .filter((insurance) => insurance.userId === userId);
+  async getInsurancePolicies(): Promise<InsurancePolicy[]> {
+    return [...this.insurancePolicies];
   }
 
-  async getInsurance(id: number): Promise<Insurance | undefined> {
-    return this.insurances.get(id);
+  // Financial goals methods
+  async getFinancialGoals(): Promise<FinancialGoal[]> {
+    return [...this.financialGoals];
   }
 
-  async createInsurance(insurance: InsertInsurance): Promise<Insurance> {
-    const id = this.insuranceId++;
-    const newInsurance: Insurance = { ...insurance, id };
-    
-    this.insurances.set(id, newInsurance);
-    return newInsurance;
+  // Chat history methods
+  async getChatHistory(): Promise<ChatMessage[]> {
+    return [...this.chatMessages].sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
   }
 
-  async getExpiringInsurances(userId: number, daysThreshold: number): Promise<Insurance[]> {
-    const now = new Date();
-    const thresholdDate = new Date();
-    thresholdDate.setDate(now.getDate() + daysThreshold);
-    
-    return Array.from(this.insurances.values())
-      .filter((insurance) => 
-        insurance.userId === userId && 
-        insurance.status === "active" &&
-        insurance.endDate <= thresholdDate
-      );
-  }
-
-  // AI Insights methods
-  async getAiInsights(userId: number, limit?: number): Promise<AiInsight[]> {
-    const userInsights = Array.from(this.aiInsights.values())
-      .filter((insight) => insight.userId === userId)
-      .sort((a, b) => b.date.getTime() - a.date.getTime());
-    
-    return limit ? userInsights.slice(0, limit) : userInsights;
-  }
-
-  async createAiInsight(insight: InsertAiInsight): Promise<AiInsight> {
-    const id = this.aiInsightId++;
-    const newInsight: AiInsight = { 
-      ...insight, 
-      id,
-      date: new Date()
+  async saveChatMessage(messageData: Omit<ChatMessage, "id">): Promise<ChatMessage> {
+    const message: ChatMessage = {
+      ...messageData,
+      id: generateUniqueId()
     };
-    
-    this.aiInsights.set(id, newInsight);
-    return newInsight;
-  }
-
-  async markInsightAsRead(id: number): Promise<AiInsight> {
-    const insight = this.aiInsights.get(id);
-    if (!insight) throw new Error("Insight not found");
-    
-    insight.isRead = true;
-    this.aiInsights.set(id, insight);
-    return insight;
+    this.chatMessages.push(message);
+    return message;
   }
 }
 
-export const storage = new MemStorage();
+// Database implementation with Drizzle
+export class DatabaseStorage implements IStorage {
+  public sessionStore: any;
+
+  constructor() {
+    const PostgresSessionStore = connectPg(session);
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true,
+      tableName: 'session'
+    });
+  }
+
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByPhoneNumber(phoneNumber: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.phoneNumber, phoneNumber));
+    return user;
+  }
+
+  async createUser(userData: Omit<User, "id">): Promise<User> {
+    const [user] = await db.insert(users).values(userData).returning();
+    return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  async getUserProfile(): Promise<UserProfile> {
+    // For simplicity, return a profile for the first user
+    const [user] = await db.select().from(users).limit(1);
+    const goals = await db.select().from(financialGoals).where(eq(financialGoals.userId, user.id));
+    
+    return {
+      userId: user.id,
+      name: user.name,
+      age: 32, // Default age
+      income: 85000, // Default income
+      riskProfile: "moderate",
+      goals: goals.map(goal => ({
+        type: goal.type,
+        targetAmount: goal.targetAmount,
+        timeframe: Math.ceil(
+          (new Date(goal.targetDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24 * 30)
+        )
+      }))
+    };
+  }
+
+  // Transaction methods
+  async getRecentTransactions(limit: number = 10): Promise<Transaction[]> {
+    return await db.select()
+      .from(transactions)
+      .orderBy(desc(transactions.date))
+      .limit(limit);
+  }
+
+  async getTransactions(options: { timeframe?: string, category?: string } = {}): Promise<Transaction[]> {
+    let query = db.select().from(transactions);
+    
+    if (options.timeframe) {
+      const now = new Date();
+      let startDate: Date;
+      
+      switch (options.timeframe) {
+        case 'week':
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+          break;
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+          break;
+        case 'year':
+          startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+          break;
+        default:
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+      }
+      
+      query = query.where(gte(transactions.date, startDate));
+    }
+    
+    if (options.category) {
+      query = query.where(eq(transactions.category, options.category));
+    }
+    
+    return await query.orderBy(desc(transactions.date));
+  }
+
+  async createTransaction(transactionData: Omit<Transaction, "id">): Promise<Transaction> {
+    const [transaction] = await db.insert(transactions).values(transactionData).returning();
+    return transaction;
+  }
+
+  // UPI Contacts methods
+  async getUpiContacts(): Promise<UpiContact[]> {
+    return await db.select().from(upiContacts);
+  }
+
+  async getUpiContactById(id: string): Promise<UpiContact | undefined> {
+    const contactId = parseInt(id);
+    if (isNaN(contactId)) return undefined;
+    
+    const [contact] = await db.select().from(upiContacts).where(eq(upiContacts.id, contactId));
+    return contact;
+  }
+
+  // Investment methods
+  async getInvestments(): Promise<Investment[]> {
+    return await db.select().from(investments);
+  }
+
+  // Insurance methods
+  async getInsurancePolicies(): Promise<InsurancePolicy[]> {
+    return await db.select().from(insurancePolicies);
+  }
+
+  // Financial Goals methods
+  async getFinancialGoals(): Promise<FinancialGoal[]> {
+    return await db.select().from(financialGoals);
+  }
+
+  // Chat messages methods
+  async getChatHistory(): Promise<ChatMessage[]> {
+    return await db.select()
+      .from(chatMessages)
+      .orderBy(chatMessages.timestamp);
+  }
+
+  async saveChatMessage(message: Omit<ChatMessage, "id">): Promise<ChatMessage> {
+    const chatMessage = {
+      ...message,
+      id: generateUniqueId()
+    };
+    
+    const [savedMessage] = await db.insert(chatMessages)
+      .values(chatMessage)
+      .returning();
+      
+    return savedMessage;
+  }
+}
+
+// Export a singleton instance
+export const storage = process.env.DATABASE_URL 
+  ? new DatabaseStorage() 
+  : new MemStorage();

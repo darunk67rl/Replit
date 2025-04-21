@@ -1,112 +1,64 @@
 import { apiRequest } from "./queryClient";
 
-// Interface for financial insights
-export interface FinancialInsight {
-  title: string;
-  description: string;
-  priority: "high" | "medium" | "low";
-  type: "savings" | "spending" | "investment" | "insurance";
+// Interface for finance insights response
+export interface FinanceInsights {
+  analysis: string;
+  recommendations: string[];
+  spendingCategories: {
+    category: string;
+    amount: number;
+    percentChange: number;
+    transactions: number;
+  }[];
 }
 
-// Interface for spending analysis
-export interface SpendingAnalysis {
-  summary: string;
-  topSpendingCategories: { category: string; percentage: number }[];
-  savingsRecommendation: {
-    amount: number;
-    description: string;
-  };
-  anomalies: {
-    category: string;
-    description: string;
-    severity: "high" | "medium" | "low";
-  }[];
+// Get AI-generated finance insights
+export async function getFinanceInsights(timeframe: "week" | "month" = "month"): Promise<FinanceInsights> {
+  const response = await apiRequest("GET", `/api/ai/insights?timeframe=${timeframe}`, undefined);
+  return response.json();
+}
+
+// Interface for AI chatbot response
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+}
+
+// Send message to AI finance advisor
+export async function sendChatMessage(message: string): Promise<ChatMessage> {
+  const response = await apiRequest("POST", "/api/ai/chat", { message });
+  return response.json();
 }
 
 // Interface for investment recommendations
 export interface InvestmentRecommendation {
-  riskProfile: "conservative" | "moderate" | "aggressive";
-  recommendations: {
-    type: string;
-    allocation: number;
-    reason: string;
-  }[];
-  suggestedMonthlyInvestment: number;
+  type: string;
+  name: string;
+  description: string;
+  expectedReturns: string;
+  riskLevel: "Low" | "Moderate" | "High";
+  suitability: string;
 }
 
-/**
- * Generate financial insights for a user
- */
-export async function generateFinancialInsights(userId: number): Promise<FinancialInsight[]> {
-  try {
-    const response = await apiRequest(
-      "POST",
-      `/api/users/${userId}/ai-insights/generate`,
-      {}
-    );
-    return await response.json();
-  } catch (error) {
-    console.error("Error generating financial insights:", error);
-    return [];
-  }
+// Get personalized investment recommendations
+export async function getInvestmentRecommendations(): Promise<InvestmentRecommendation[]> {
+  const response = await apiRequest("GET", "/api/ai/investments", undefined);
+  return response.json();
 }
 
-/**
- * Analyze monthly spending for a user
- */
-export async function analyzeMonthlySpending(userId: number): Promise<SpendingAnalysis> {
-  try {
-    const response = await apiRequest(
-      "POST",
-      `/api/ai-advisor/analyze-spending`,
-      { userId }
-    );
-    return await response.json();
-  } catch (error) {
-    console.error("Error analyzing monthly spending:", error);
-    throw error;
-  }
+// Interface for saving suggestions
+export interface SavingSuggestion {
+  id: string;
+  title: string;
+  description: string;
+  potentialSaving: number;
+  difficulty: "Easy" | "Medium" | "Hard";
 }
 
-/**
- * Get investment recommendations based on user profile
- */
-export async function getInvestmentRecommendations(
-  userId: number,
-  age: number,
-  monthlyIncome: number,
-  goals: string[]
-): Promise<InvestmentRecommendation> {
-  try {
-    const response = await apiRequest(
-      "POST",
-      `/api/ai-advisor/investment-recommendations`,
-      { userId, age, monthlyIncome, goals }
-    );
-    return await response.json();
-  } catch (error) {
-    console.error("Error getting investment recommendations:", error);
-    throw error;
-  }
-}
-
-/**
- * Get an answer from the AI financial advisor
- */
-export async function askFinancialAdvisor(
-  userId: number,
-  question: string
-): Promise<string> {
-  try {
-    const response = await apiRequest(
-      "POST",
-      `/api/ai-advisor/query`,
-      { userId, question }
-    );
-    const data = await response.json();
-    return data.answer;
-  } catch (error) {
-    console.error("Error asking financial advisor:", error);
-    throw error;
-  }
+// Get personalized saving suggestions
+export async function getSavingSuggestions(): Promise<SavingSuggestion[]> {
+  const response = await apiRequest("GET", "/api/ai/savings", undefined);
+  return response.json();
 }

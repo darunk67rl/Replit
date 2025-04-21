@@ -1,175 +1,225 @@
-import { pgTable, text, serial, integer, boolean, timestamp, real, json } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, date, timestamp, real, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
-// User Schema
+// User table schema
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
-  password: text("password").notNull(),
   name: text("name").notNull(),
-  phone: text("phone").notNull().unique(),
+  phoneNumber: text("phone_number").notNull().unique(),
   email: text("email"),
-  isVerified: boolean("is_verified").default(false),
-  kycComplete: boolean("kyc_complete").default(false),
-});
-
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  name: true,
-  phone: true,
-  email: true,
-});
-
-// Bank Account Schema
-export const bankAccounts = pgTable("bank_accounts", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  bankName: text("bank_name").notNull(),
-  accountNumber: text("account_number").notNull(),
-  ifscCode: text("ifsc_code").notNull(), 
-  accountType: text("account_type").notNull(),
+  password: text("password"),
+  balance: integer("balance").default(0),
   upiId: text("upi_id"),
-  balance: real("balance").notNull().default(0),
-  isDefault: boolean("is_default").default(false),
+  isKycVerified: boolean("is_kyc_verified").default(false),
 });
 
-export const insertBankAccountSchema = createInsertSchema(bankAccounts).pick({
-  userId: true,
-  bankName: true,
-  accountNumber: true,
-  ifscCode: true,
-  accountType: true,
-  upiId: true,
-  balance: true,
-  isDefault: true,
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true
 });
 
-// Transaction Schema
+// Transactions table schema
 export const transactions = pgTable("transactions", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  amount: real("amount").notNull(),
-  type: text("type").notNull(), // credit, debit
-  category: text("category").notNull(), // shopping, food, entertainment, etc.
-  description: text("description"),
-  recipient: text("recipient"),
-  sender: text("sender"),
-  accountId: integer("account_id"),
+  userId: integer("user_id").references(() => users.id),
+  merchant: text("merchant").notNull(),
   date: timestamp("date").notNull().defaultNow(),
-  status: text("status").notNull(), // pending, completed, failed
-  paymentMethod: text("payment_method").notNull(), // upi, card, etc.
+  amount: integer("amount").notNull(),
+  type: text("type").notNull(),
+  category: text("category").notNull(),
+  description: text("description")
 });
 
-export const insertTransactionSchema = createInsertSchema(transactions).pick({
-  userId: true,
-  amount: true,
-  type: true,
-  category: true,
-  description: true,
-  recipient: true,
-  sender: true,
-  accountId: true,
-  status: true,
-  paymentMethod: true,
+export const insertTransactionSchema = createInsertSchema(transactions).omit({
+  id: true
 });
 
-// Investment Schema
+// UPI Contacts table schema
+export const upiContacts = pgTable("upi_contacts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  name: text("name").notNull(),
+  upiId: text("upi_id").notNull(),
+  phoneNumber: text("phone_number"),
+  isFrequent: boolean("is_frequent").default(false)
+});
+
+export const insertUpiContactSchema = createInsertSchema(upiContacts).omit({
+  id: true
+});
+
+// Investments table schema
 export const investments = pgTable("investments", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  type: text("type").notNull(), // mutual_fund, stock, gold, fixed_deposit
+  userId: integer("user_id").references(() => users.id),
   name: text("name").notNull(),
-  investedAmount: real("invested_amount").notNull(),
-  currentValue: real("current_value").notNull(),
-  returns: real("returns"),
-  units: real("units"),
-  averagePrice: real("average_price"),
-  isSIP: boolean("is_sip").default(false),
-  sipAmount: real("sip_amount"),
-  lastUpdated: timestamp("last_updated").defaultNow(),
+  type: text("type").notNull(), // mutual_fund, stock, gold, fd, other
+  value: integer("value").notNull(),
+  changePercentage: real("change_percentage").notNull(),
+  investedAmount: integer("invested_amount").notNull(),
+  investmentDate: date("investment_date").notNull()
 });
 
-export const insertInvestmentSchema = createInsertSchema(investments).pick({
-  userId: true,
-  type: true,
-  name: true,
-  investedAmount: true,
-  currentValue: true,
-  returns: true,
-  units: true,
-  averagePrice: true,
-  isSIP: true,
-  sipAmount: true,
+export const insertInvestmentSchema = createInsertSchema(investments).omit({
+  id: true
 });
 
-// Insurance Schema
-export const insurances = pgTable("insurances", {
+// Insurance Policies table schema
+export const insurancePolicies = pgTable("insurance_policies", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  type: text("type").notNull(), // health, term, car, etc.
-  provider: text("provider").notNull(),
+  userId: integer("user_id").references(() => users.id),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // health, term, vehicle, other
+  premium: integer("premium").notNull(),
+  coverage: integer("coverage").notNull(),
+  expiryDate: date("expiry_date").notNull(),
   policyNumber: text("policy_number").notNull(),
-  coverAmount: real("cover_amount").notNull(),
-  premium: real("premium").notNull(),
-  frequency: text("frequency").notNull(), // monthly, quarterly, yearly
-  startDate: timestamp("start_date").notNull(),
-  endDate: timestamp("end_date").notNull(),
-  status: text("status").notNull(), // active, expired, pending
-  details: json("details"),
+  provider: text("provider").notNull()
 });
 
-export const insertInsuranceSchema = createInsertSchema(insurances).pick({
-  userId: true,
-  type: true,
-  provider: true,
-  policyNumber: true,
-  coverAmount: true,
-  premium: true,
-  frequency: true,
-  startDate: true,
-  endDate: true,
-  status: true,
-  details: true,
+export const insertInsurancePolicySchema = createInsertSchema(insurancePolicies).omit({
+  id: true
 });
 
-// AI Insights Schema
-export const aiInsights = pgTable("ai_insights", {
+// Financial Goals table schema
+export const financialGoals = pgTable("financial_goals", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  type: text("type").notNull(), // savings, spending, investment, etc.
-  title: text("title").notNull(),
-  description: text("description").notNull(),
-  priority: text("priority").notNull(), // high, medium, low
-  date: timestamp("date").notNull().defaultNow(),
-  isRead: boolean("is_read").default(false),
+  userId: integer("user_id").references(() => users.id),
+  name: text("name").notNull(),
+  targetAmount: integer("target_amount").notNull(),
+  currentAmount: integer("current_amount").notNull().default(0),
+  targetDate: date("target_date").notNull(),
+  type: text("type").notNull() // emergency, education, home, car, vacation, retirement, other
 });
 
-export const insertAiInsightSchema = createInsertSchema(aiInsights).pick({
-  userId: true,
-  type: true,
-  title: true,
-  description: true,
-  priority: true,
-  isRead: true,
+export const insertFinancialGoalSchema = createInsertSchema(financialGoals).omit({
+  id: true
 });
 
-// Types
+// Chat Messages table schema
+export const chatMessages = pgTable("chat_messages", {
+  id: varchar("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  role: text("role").notNull(), // user or assistant
+  content: text("content").notNull(),
+  timestamp: timestamp("timestamp").notNull().defaultNow()
+});
+
+export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
+  id: true
+});
+
+// Type definitions for our models
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
-
-export type BankAccount = typeof bankAccounts.$inferSelect;
-export type InsertBankAccount = z.infer<typeof insertBankAccountSchema>;
 
 export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 
+export type UpiContact = typeof upiContacts.$inferSelect;
+export type InsertUpiContact = z.infer<typeof insertUpiContactSchema>;
+
 export type Investment = typeof investments.$inferSelect;
 export type InsertInvestment = z.infer<typeof insertInvestmentSchema>;
 
-export type Insurance = typeof insurances.$inferSelect;
-export type InsertInsurance = z.infer<typeof insertInsuranceSchema>;
+export type InsurancePolicy = typeof insurancePolicies.$inferSelect;
+export type InsertInsurancePolicy = z.infer<typeof insertInsurancePolicySchema>;
 
-export type AiInsight = typeof aiInsights.$inferSelect;
-export type InsertAiInsight = z.infer<typeof insertAiInsightSchema>;
+export type FinancialGoal = typeof financialGoals.$inferSelect;
+export type InsertFinancialGoal = z.infer<typeof insertFinancialGoalSchema>;
+
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+
+// Define relations
+export const usersRelations = relations(users, ({ many }) => ({
+  transactions: many(transactions),
+  upiContacts: many(upiContacts),
+  investments: many(investments),
+  insurancePolicies: many(insurancePolicies),
+  financialGoals: many(financialGoals),
+  chatMessages: many(chatMessages)
+}));
+
+export const transactionsRelations = relations(transactions, ({ one }) => ({
+  user: one(users, {
+    fields: [transactions.userId],
+    references: [users.id]
+  })
+}));
+
+export const upiContactsRelations = relations(upiContacts, ({ one }) => ({
+  user: one(users, {
+    fields: [upiContacts.userId],
+    references: [users.id]
+  })
+}));
+
+export const investmentsRelations = relations(investments, ({ one }) => ({
+  user: one(users, {
+    fields: [investments.userId],
+    references: [users.id]
+  })
+}));
+
+export const insurancePoliciesRelations = relations(insurancePolicies, ({ one }) => ({
+  user: one(users, {
+    fields: [insurancePolicies.userId],
+    references: [users.id]
+  })
+}));
+
+export const financialGoalsRelations = relations(financialGoals, ({ one }) => ({
+  user: one(users, {
+    fields: [financialGoals.userId],
+    references: [users.id]
+  })
+}));
+
+export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
+  user: one(users, {
+    fields: [chatMessages.userId],
+    references: [users.id]
+  })
+}));
+
+// Additional types needed for the application
+
+// User profile for AI recommendations
+export interface UserProfile {
+  userId: number;
+  name: string;
+  age: number;
+  income: number;
+  riskProfile: 'low' | 'moderate' | 'high';
+  goals: {
+    type: string;
+    targetAmount: number;
+    timeframe: number; // in months
+  }[];
+}
+
+// Financial Goal for an upcoming time period
+export interface FinancialPlanGoal {
+  type: string;
+  targetAmount: number;
+  timeframe: number; // in months
+  currentContribution: number;
+  suggestedContribution: number;
+}
+
+// AI-generated spending report
+export interface SpendingReport {
+  totalSpent: number;
+  periodStart: Date;
+  periodEnd: Date;
+  categories: {
+    name: string;
+    amount: number;
+    percentage: number;
+    trend: number; // percentage change from previous period
+  }[];
+  insights: string[];
+}
