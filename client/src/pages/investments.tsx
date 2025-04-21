@@ -389,11 +389,8 @@ export default function Investments() {
                           dataKey="value"
                           nameKey="name"
                           label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        >
-                          {assetAllocationData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
+                        />
+                        {/* Will add cells when needed */}
                         <Tooltip formatter={(value) => formatCurrency(value as number)} />
                         <Legend />
                       </PieChart>

@@ -38,13 +38,15 @@ import Loans from "@/pages/loans";
 import AiAdvisor from "@/pages/ai-advisor";
 import Investments from "@/pages/investments";
 import SendMoney from "@/pages/send-money";
+import SimpleHome from "@/pages/simple-home";
 
 function Router() {
   return (
     <Switch>
       <Route path="/auth/login" component={LoginPage} />
       <Route path="/auth/otp-verification" component={OtpVerification} />
-      <Route path="/" component={Home} />
+      <Route path="/" component={SimpleHome} />
+      <Route path="/home" component={Home} />
       <Route path="/investments" component={Investments} />
       <Route path="/payments" component={Home} />
       <Route path="/finance" component={Home} />
@@ -59,14 +61,10 @@ function Router() {
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="light">
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <TooltipProvider>
+      <Toaster />
+      <Router />
+    </TooltipProvider>
   );
 }
 
