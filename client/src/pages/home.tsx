@@ -1,14 +1,20 @@
-import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LayoutDashboard, Send, Briefcase, CreditCard, LogOut, Settings, User } from "lucide-react";
 
 export default function Home() {
-  const { user, logout } = useAuth();
+  // Temporary mock user data until auth is fixed
+  const user = {
+    name: "Demo User",
+    username: "demouser",
+    phoneNumber: "+91 98765 43210",
+    upiId: "demo@moneyflow",
+    isKycVerified: true
+  };
   
   const handleLogout = () => {
-    logout();
+    console.log("Logout clicked");
   };
   
   return (

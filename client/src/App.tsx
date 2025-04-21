@@ -36,14 +36,15 @@ function ProtectedRoute({ component: Component }: { component: React.FC }) {
 }
 
 function Router() {
+  // Temp fix for auth issue
   return (
     <Switch>
       <Route path="/auth/login" component={Login} />
       <Route path="/auth/otp-verification" component={OtpVerification} />
-      <Route path="/" component={() => <ProtectedRoute component={Home} />} />
-      <Route path="/payments" component={() => <ProtectedRoute component={Payments} />} />
-      <Route path="/finance" component={() => <ProtectedRoute component={Finance} />} />
-      <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
+      <Route path="/" component={Home} />
+      <Route path="/payments" component={Payments} />
+      <Route path="/finance" component={Finance} />
+      <Route path="/profile" component={Profile} />
       <Route component={NotFound} />
     </Switch>
   );
