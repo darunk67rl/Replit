@@ -6,9 +6,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Send, Bot, User as UserIcon, Lightbulb, LineChart, ShieldCheck, Sparkles } from "lucide-react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useAuth } from "@/contexts/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Header from "@/components/Header";
@@ -31,77 +28,157 @@ interface AIInsight {
 }
 
 export default function AiAdvisor() {
-  const { user } = useAuth();
   const { toast } = useToast();
   const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "mock-msg-1",
+      role: "assistant",
+      content: "Hello! I'm your AI financial advisor. How can I help you with your finances today?",
+      timestamp: new Date(),
+    }
+  ]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Get chat history
-  const { data: chatHistory, isLoading: chatLoading } = useQuery<Message[]>({
-    queryKey: ["/api/ai/chat/history"],
-    enabled: !!user,
-  });
-
-  // Get AI insights
-  const { data: aiInsights, isLoading: insightsLoading } = useQuery<AIInsight[]>({
-    queryKey: ["/api/ai/insights"],
-    enabled: !!user,
-  });
-
-  // Get investment recommendations
-  const { data: investmentRecommendations, isLoading: recommendationsLoading } = useQuery({
-    queryKey: ["/api/ai/investments"],
-    enabled: !!user,
-  });
-
-  // Get saving suggestions
-  const { data: savingSuggestions, isLoading: suggestionsLoading } = useQuery({
-    queryKey: ["/api/ai/savings"],
-    enabled: !!user,
-  });
-
-  // Local state for messages while waiting for server
-  const [messages, setMessages] = useState<Message[]>([]);
-
-  // Initialize messages from chat history when data is loaded
-  useEffect(() => {
-    if (chatHistory && chatHistory.length > 0) {
-      setMessages(chatHistory);
-    } else if (!chatLoading) {
-      // If there are no chat history, add a welcome message
-      setMessages([
-        {
-          id: "welcome",
-          role: "assistant",
-          content: "Hello! I'm your AI financial advisor. How can I help you today?",
-          timestamp: new Date(),
-        },
-      ]);
+  
+  // Mock data for demo purposes
+  const chatHistory = messages;
+  const chatLoading = false;
+  
+  const aiInsights = [
+    {
+      id: 1,
+      title: "Reduce dining expenses",
+      description: "You've spent 35% more on restaurants this month compared to your average. Consider cooking at home more often.",
+      category: "spending" as const,
+      priority: "high" as const,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 2,
+      title: "Emergency fund suggestion",
+      description: "You don't have enough savings for emergencies. Try to save at least ₹50,000 for unexpected expenses.",
+      category: "saving" as const,
+      priority: "high" as const,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 3,
+      title: "Investment opportunity",
+      description: "Consider investing in index funds for long-term growth with lower risk.",
+      category: "investment" as const,
+      priority: "medium" as const,
+      createdAt: new Date().toISOString(),
     }
-  }, [chatHistory, chatLoading]);
+  ];
+  const insightsLoading = false;
 
-  // Send message mutation
-  const sendMessageMutation = useMutation({
-    mutationFn: async (newMessage: string) => {
-      const response = await apiRequest("POST", "/api/ai/chat", { message: newMessage });
-      if (!response.ok) {
-        throw new Error("Failed to send message");
-      }
-      return await response.json();
+  // Mock investment recommendations
+  const investmentRecommendations = [
+    {
+      id: 1,
+      name: "Index Fund Investment",
+      description: "Consider investing in Nifty 50 index funds for long-term growth.",
+      expectedReturn: "10-12%",
+      riskLevel: "moderate",
     },
-    onSuccess: (data) => {
-      setMessages((prev) => [...prev, data]);
-      queryClient.invalidateQueries({ queryKey: ["/api/ai/chat/history"] });
+    {
+      id: 2,
+      name: "Fixed Deposit",
+      description: "For risk-averse investors, consider bank FDs offering 7% interest rates.",
+      expectedReturn: "6-7%",
+      riskLevel: "low",
     },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    {
+      id: 3,
+      name: "Government Bonds",
+      description: "Government securities offer stable returns with very low risk.",
+      expectedReturn: "7-8%",
+      riskLevel: "low",
+    }
+  ];
+  const recommendationsLoading = false;
+
+  // Mock saving suggestions
+  const savingSuggestions = [
+    {
+      id: 1,
+      title: "50-30-20 Rule",
+      description: "Allocate 50% of income to needs, 30% to wants, and 20% to savings and debt repayment.",
     },
-  });
+    {
+      id: 2,
+      title: "Automate Savings",
+      description: "Set up automatic transfers to savings account on payday to ensure consistent saving.",
+    },
+    {
+      id: 3,
+      title: "Emergency Fund",
+      description: "Build an emergency fund that covers 3-6 months of essential expenses.",
+    }
+  ];
+  const suggestionsLoading = false;
+
+  // Auto scroll to bottom when messages change
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // Mock send message function
+  const handleSendMessage = () => {
+    if (!message.trim()) return;
+
+    const newUserMessage: Message = {
+      id: `user_${Date.now()}`,
+      role: "user",
+      content: message,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, newUserMessage]);
+    
+    // Simulate AI response
+    setTimeout(() => {
+      const aiResponse: Message = {
+        id: `ai_${Date.now()}`,
+        role: "assistant",
+        content: getAIResponse(message),
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, aiResponse]);
+    }, 1000);
+    
+    setMessage("");
+
+    // Focus back on textarea after sending
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
+  
+  // Simple AI response function
+  const getAIResponse = (userMessage: string) => {
+    const messageLower = userMessage.toLowerCase();
+    
+    if (messageLower.includes("invest") || messageLower.includes("stock") || messageLower.includes("mutual fund")) {
+      return "Based on your risk profile, I recommend considering index funds for long-term investment. They offer good returns with moderate risk. Would you like me to explain more about index funds?";
+    } else if (messageLower.includes("save") || messageLower.includes("saving")) {
+      return "To improve your savings, consider implementing the 50-30-20 rule: 50% of income for needs, 30% for wants, and 20% for savings and debt repayment. This balanced approach can help you build your savings consistently.";
+    } else if (messageLower.includes("loan") || messageLower.includes("borrow") || messageLower.includes("debt")) {
+      return "Before taking any loan, compare interest rates from multiple lenders. For home loans, currently SBI offers rates starting at 8.40%, while HDFC Bank offers 8.50%. Always check your eligibility and repayment capacity before applying.";
+    } else if (messageLower.includes("budget") || messageLower.includes("spending")) {
+      return "Based on your spending patterns, you could optimize your budget by reducing dining out expenses, which are 30% higher than average. Consider cooking at home more often, which could save you approximately ₹5,000 per month.";
+    } else {
+      return "Thank you for your question. As your AI financial advisor, I'm here to help with investment decisions, saving strategies, loan options, and budgeting advice. Could you provide more details about your financial goals?";
+    }
+  };
+  
+  // Send message mutation is mocked with the handleSendMessage function
+  const sendMessageMutation = {
+    isPending: false
+  };
 
   // Auto scroll to bottom when messages change
   useEffect(() => {
