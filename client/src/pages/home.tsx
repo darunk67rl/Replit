@@ -1,135 +1,164 @@
+import React from "react";
+import { useAuth } from "@/contexts/auth-context";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LayoutDashboard, Send, Briefcase, CreditCard, LogOut, Settings, User } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import Header from "@/components/Header";
+import BottomNavigation from "@/components/BottomNavigation";
+import BalanceCard from "@/components/BalanceCard";
+import QuickAccess from "@/components/QuickAccess";
+import RecentTransactions from "@/components/RecentTransactions";
+import { Loader2, ArrowRight } from "lucide-react";
+import { Link } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
-  // Temporary mock user data until auth is fixed
-  const user = {
-    name: "Demo User",
-    username: "demouser",
-    phoneNumber: "+91 98765 43210",
-    upiId: "demo@moneyflow",
-    isKycVerified: true
+  const { user, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
+
+  // Fetch transactions with react-query
+  const { 
+    data: transactions,
+    isLoading: transactionsLoading,
+  } = useQuery({
+    queryKey: ["/api/transactions/recent"],
+    enabled: !!user,
+  });
+
+  // Fetch AI insights
+  const { 
+    data: insights,
+    isLoading: insightsLoading
+  } = useQuery({
+    queryKey: ["/api/ai/insights"],
+    enabled: !!user,
+  });
+
+  const isLoading = authLoading || transactionsLoading || insightsLoading;
+
+  // Show greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
   };
-  
-  const handleLogout = () => {
-    console.log("Logout clicked");
-  };
-  
+
+  // Check KYC status and show appropriate message
+  const showKycBanner = user && !user.isKycVerified;
+
   return (
-    <div className="flex flex-col min-h-screen bg-neutral-50 dark:bg-neutral-900 p-4">
+    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <header className="flex justify-between items-center mb-6">
-        <div className="flex items-center">
-          <h1 className="text-2xl font-bold text-primary">MoneyFlow</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon">
-            <Settings className="h-5 w-5" />
-          </Button>
-          <Avatar>
-            <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
-          </Avatar>
-        </div>
-      </header>
-      
-      {/* Main Content */}
-      <main className="flex-1">
-        {/* User Welcome Card */}
-        <Card className="mb-6">
-          <CardHeader className="pb-2">
-            <CardTitle>Welcome, {user?.name || "User"}!</CardTitle>
-            <CardDescription>
-              Your account is set up and ready to use.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Username:</span>
-                <span className="font-medium">{user?.username}</span>
+      <Header />
+
+      {/* Main content */}
+      <main className="flex-1 container max-w-md mx-auto px-4 pb-20 pt-4">
+        {/* Welcome section */}
+        <section className="mb-6">
+          {authLoading ? (
+            <Skeleton className="h-8 w-3/4 mb-2" />
+          ) : (
+            <h1 className="text-2xl font-bold">
+              {getGreeting()}, {user?.name?.split(" ")[0] || "User"}!
+            </h1>
+          )}
+          <p className="text-muted-foreground">Welcome to your financial hub</p>
+        </section>
+
+        {/* KYC banner if needed */}
+        {showKycBanner && (
+          <Card className="mb-6 border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20">
+            <CardContent className="flex items-center justify-between p-4">
+              <div>
+                <p className="font-medium">Complete your KYC verification</p>
+                <p className="text-sm text-muted-foreground">Unlock all features and higher limits</p>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Phone:</span>
-                <span className="font-medium">{user?.phoneNumber}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">UPI ID:</span>
-                <span className="font-medium">{user?.upiId || "Not set"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">KYC Status:</span>
-                <span className={`font-medium ${user?.isKycVerified ? "text-green-500" : "text-amber-500"}`}>
-                  {user?.isKycVerified ? "Verified" : "Pending"}
-                </span>
-              </div>
+              <Button size="sm" variant="outline" className="shrink-0">
+                Verify Now
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Balance card */}
+        <section className="mb-6">
+          <BalanceCard />
+        </section>
+
+        {/* Quick access */}
+        <section className="mb-6">
+          <h2 className="font-semibold mb-3">Quick Actions</h2>
+          <QuickAccess />
+        </section>
+
+        {/* Recent transactions */}
+        <section className="mb-6">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="font-semibold">Recent Transactions</h2>
+            <Link href="/transactions">
+              <Button variant="link" className="p-0 h-auto">
+                See All
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            </Link>
+          </div>
+          
+          {isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
             </div>
-          </CardContent>
-          <CardFooter>
-            <Button onClick={handleLogout} variant="outline" className="w-full">
-              <LogOut className="mr-2 h-4 w-4" />
-              Log Out
-            </Button>
-          </CardFooter>
-        </Card>
-        
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <Card className="hover:bg-accent hover:cursor-pointer transition-colors">
-            <CardHeader className="py-4">
-              <CardTitle className="text-sm font-medium flex items-center">
-                <Send className="mr-2 h-4 w-4 text-primary" />
-                Send Money
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          <Card className="hover:bg-accent hover:cursor-pointer transition-colors">
-            <CardHeader className="py-4">
-              <CardTitle className="text-sm font-medium flex items-center">
-                <CreditCard className="mr-2 h-4 w-4 text-primary" />
-                Pay Bills
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          <Card className="hover:bg-accent hover:cursor-pointer transition-colors">
-            <CardHeader className="py-4">
-              <CardTitle className="text-sm font-medium flex items-center">
-                <Briefcase className="mr-2 h-4 w-4 text-primary" />
-                Investments
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          <Card className="hover:bg-accent hover:cursor-pointer transition-colors">
-            <CardHeader className="py-4">
-              <CardTitle className="text-sm font-medium flex items-center">
-                <User className="mr-2 h-4 w-4 text-primary" />
-                My Profile
-              </CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
+          ) : (
+            <RecentTransactions />
+          )}
+        </section>
+
+        {/* AI insights preview */}
+        <section className="mb-6">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="font-semibold">Financial Insights</h2>
+            <Link href="/ai-advisor">
+              <Button variant="link" className="p-0 h-auto">
+                See All
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            </Link>
+          </div>
+
+          {insightsLoading ? (
+            <Skeleton className="h-32 w-full" />
+          ) : (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">AI-Powered Analysis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {insights?.analysis || "Get personalized financial insights powered by AI."}
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => {
+                    toast({
+                      title: "AI Advisor",
+                      description: "Opening your personalized financial advisor",
+                    });
+                  }}
+                >
+                  Ask AI Advisor
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </section>
       </main>
-      
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 flex justify-around">
-        <Button variant="ghost" size="icon" className="flex flex-col items-center">
-          <LayoutDashboard className="h-5 w-5" />
-          <span className="text-xs mt-1">Home</span>
-        </Button>
-        <Button variant="ghost" size="icon" className="flex flex-col items-center">
-          <Send className="h-5 w-5" />
-          <span className="text-xs mt-1">Send</span>
-        </Button>
-        <Button variant="ghost" size="icon" className="flex flex-col items-center">
-          <Briefcase className="h-5 w-5" />
-          <span className="text-xs mt-1">Invest</span>
-        </Button>
-        <Button variant="ghost" size="icon" className="flex flex-col items-center">
-          <User className="h-5 w-5" />
-          <span className="text-xs mt-1">Profile</span>
-        </Button>
-      </div>
+
+      {/* Bottom navigation */}
+      <BottomNavigation />
     </div>
   );
 }

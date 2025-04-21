@@ -1,130 +1,135 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function OtpVerification() {
+  const { verifyOtp, isAuthenticated, isLoading } = useAuth();
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
   const [otp, setOtp] = useState("");
-  const [error, setError] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [countdown, setCountdown] = useState(30);
-  const { verifyOtp, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
 
+  // If user is already authenticated, redirect to home
   useEffect(() => {
-    // Check if phone number is stored
-    const phoneNumber = localStorage.getItem("finall-phone");
-    if (!phoneNumber) {
-      setLocation("/auth/login");
+    if (isAuthenticated) {
+      navigate("/");
     }
-  }, [setLocation]);
+  }, [isAuthenticated, navigate]);
 
+  // Get phone number from local storage or session storage
   useEffect(() => {
-    // Countdown timer for resend OTP
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
+    // In a real app, we'd store this securely or pass via state management
+    const savedPhone = sessionStorage.getItem("verificationPhoneNumber");
+    if (savedPhone) {
+      setPhoneNumber(savedPhone);
+    } else {
+      // If no phone number is found, redirect back to login
+      toast({
+        title: "Missing Information",
+        description: "Please start the login process again",
+        variant: "destructive",
+      });
+      navigate("/auth/login");
     }
+  }, [navigate, toast]);
+
+  // Countdown timer for resend OTP
+  useEffect(() => {
+    if (countdown <= 0) return;
+    
+    const timer = setTimeout(() => {
+      setCountdown(countdown - 1);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
   }, [countdown]);
 
-  const handleVerify = async () => {
-    if (otp.length !== 6) {
-      setError("Please enter a valid 6-digit OTP");
+  // Handle OTP verification
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!otp || otp.length !== 6) {
+      toast({
+        title: "Invalid OTP",
+        description: "Please enter a valid 6-digit OTP",
+        variant: "destructive",
+      });
       return;
     }
-    
-    setError("");
+
     try {
-      // Get the phone number from localStorage
-      const phoneNumber = localStorage.getItem("finall-phone") || "";
-      if (!phoneNumber) {
-        setError("Phone number not found. Please go back to login.");
-        return;
-      }
-      
       await verifyOtp(phoneNumber, otp);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid OTP. Please try again.");
+      // Success handling is done in the auth context
+    } catch (error) {
+      // Error handling is done in the auth context
     }
   };
 
+  // Handle resend OTP
   const handleResendOtp = () => {
+    // In a real app, we'd call the requestOtp function again
+    toast({
+      title: "OTP Resent",
+      description: "A new OTP has been sent to your phone",
+    });
     setCountdown(30);
-    setError("");
-    // In a real app, this would make an API call to resend OTP
-  };
-
-  const goBack = () => {
-    setLocation("/auth/login");
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-neutral-50 dark:bg-neutral-900 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-2">
-          <div className="flex items-center">
-            <Button
-              onClick={goBack}
-              variant="ghost"
-              size="icon"
-              className="mr-2 h-8 w-8"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <CardTitle className="text-2xl font-bold">Verify OTP</CardTitle>
-          </div>
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl">Verify Phone Number</CardTitle>
           <CardDescription>
-            We've sent a verification code to {localStorage.getItem("finall-phone") || "your phone"}
+            Enter the 6-digit OTP sent to {phoneNumber ? phoneNumber : "your phone"}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <InputOTP
-              maxLength={6}
-              value={otp}
-              onChange={setOtp}
-              render={({ slots }) => (
-                <InputOTPGroup>
-                  {slots.map((slot, i) => (
-                    <InputOTPSlot key={i} {...slot} index={i} />
-                  ))}
-                </InputOTPGroup>
-              )}
-            />
-            {error && <p className="text-sm text-red-500">{error}</p>}
-          </div>
-          <div className="text-center">
-            {countdown > 0 ? (
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                Resend OTP in {countdown} seconds
-              </p>
-            ) : (
-              <Button
-                variant="link"
-                onClick={handleResendOtp}
-                className="p-0 h-auto text-primary"
-              >
-                Resend OTP
-              </Button>
-            )}
-          </div>
+        <CardContent>
+          <form onSubmit={handleVerifyOtp} className="space-y-4">
+            <div className="space-y-2">
+              <Input
+                type="text"
+                placeholder="Enter 6-digit OTP"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+                className="text-center text-lg tracking-widest"
+                maxLength={6}
+                inputMode="numeric"
+                autoFocus
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoading || otp.length !== 6}>
+              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Verify OTP
+            </Button>
+          </form>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-col space-y-2">
+          <div className="text-sm text-center text-muted-foreground">
+            Didn't receive the OTP?
+          </div>
           <Button
+            variant="outline"
+            type="button"
             className="w-full"
-            onClick={handleVerify}
-            disabled={isLoading || otp.length !== 6}
+            disabled={countdown > 0}
+            onClick={handleResendOtp}
           >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Verifying
-              </>
-            ) : (
-              "Verify & Continue"
-            )}
+            {countdown > 0 ? `Resend OTP in ${countdown}s` : "Resend OTP"}
+          </Button>
+          <Button
+            variant="link"
+            type="button"
+            className="w-full"
+            onClick={() => navigate("/auth/login")}
+          >
+            Back to Login
           </Button>
         </CardFooter>
       </Card>
