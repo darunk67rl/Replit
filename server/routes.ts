@@ -84,17 +84,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Process the transaction (mock implementation)
-      const txnId = `TXN${Date.now()}`;
+      const transactionId = `TXN${Date.now()}`;
       const transaction = await storage.createTransaction({
-        ...result.data,
-        id: txnId,
-        status: "success",
-        timestamp: new Date()
+        amount: result.data.amount,
+        type: result.data.type,
+        date: new Date(),
+        userId: null,
+        merchant: result.data.recipient,
+        category: "transfer",
+        description: result.data.note || "UPI transaction"
       });
 
       res.status(200).json({
         message: "Transaction processed successfully",
-        transactionId: txnId,
+        transactionId: transaction.id,
         transaction
       });
     } catch (error) {
@@ -255,14 +258,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create a transaction record in pending state
       const transaction = await storage.createTransaction({
-        id: `TXN${Date.now()}`,
-        amount: parseFloat(amount),
+        amount: Math.round(parseFloat(amount)),
         type: "payment",
-        recipient: recipient || "Unknown",
-        note: req.body.note || '',
-        status: "pending",
-        timestamp: new Date(),
-        paymentIntentId: paymentIntent.id
+        date: new Date(),
+        userId: null,
+        category: "transfer",
+        merchant: recipient || "Unknown recipient",
+        description: req.body.note || 'Payment via Stripe'
       });
 
       res.status(200).json({

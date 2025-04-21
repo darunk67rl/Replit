@@ -14,11 +14,12 @@ import { apiRequest } from "@/lib/queryClient";
 import { ArrowLeft, ArrowRight, Search, Users, Phone, QrCode, CreditCard, Check } from "lucide-react";
 import Header from "@/components/Header";
 import BottomNavigation from "@/components/BottomNavigation";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
+// Import mock Stripe implementation instead of real Stripe
+// Replace with real Stripe when API keys are available
+import { loadMockStripe, MockPaymentElement } from "@/lib/stripe-mock";
 
-// Initialize Stripe with your publishable key
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || "pk_test_placeholder");
+// Initialize mock Stripe
+const stripePromise = loadMockStripe();
 
 // Contact interfaces
 interface Contact {
@@ -103,52 +104,70 @@ const allContacts: Contact[] = [
   },
 ];
 
-// Payment form component using Stripe
+// Payment form component using mock Stripe
 function PaymentForm({ amount, onSuccess }: { amount: number; onSuccess: () => void }) {
-  const stripe = useStripe();
-  const elements = useElements();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!stripe || !elements) {
-      return;
-    }
-
     setIsLoading(true);
 
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: window.location.origin + "/payment-success",
-      },
-      redirect: "if_required",
-    });
-
-    if (error) {
-      toast({
-        title: "Payment Failed",
-        description: error.message || "An error occurred while processing your payment.",
-        variant: "destructive",
-      });
-    } else {
-      // Payment succeeded
-      toast({
-        title: "Payment Success",
-        description: "Your payment was processed successfully.",
-      });
-      onSuccess();
-    }
-
-    setIsLoading(false);
+    // Simulate payment processing
+    setTimeout(() => {
+      // 80% chance of success
+      const isSuccess = Math.random() > 0.2;
+      
+      if (isSuccess) {
+        toast({
+          title: "Payment Success",
+          description: "Your payment was processed successfully.",
+        });
+        onSuccess();
+      } else {
+        toast({
+          title: "Payment Failed",
+          description: "Your card was declined. Please try another payment method.",
+          variant: "destructive",
+        });
+      }
+      
+      setIsLoading(false);
+    }, 1500);
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <PaymentElement />
-      <Button type="submit" className="w-full" disabled={isLoading || !stripe || !elements}>
+      <div className="mock-stripe-element p-4 border rounded-md bg-white dark:bg-gray-900 shadow-sm">
+        <div className="mb-2">
+          <label className="text-sm font-medium">Card Number</label>
+          <div className="h-10 p-2 mt-1 border rounded-md bg-gray-50 dark:bg-gray-800 flex items-center">
+            <span className="text-gray-500">4242 4242 4242 4242</span>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <label className="text-sm font-medium">Expiry</label>
+            <div className="h-10 p-2 mt-1 border rounded-md bg-gray-50 dark:bg-gray-800 flex items-center">
+              <span className="text-gray-500">12/30</span>
+            </div>
+          </div>
+          <div className="w-24">
+            <label className="text-sm font-medium">CVC</label>
+            <div className="h-10 p-2 mt-1 border rounded-md bg-gray-50 dark:bg-gray-800 flex items-center">
+              <span className="text-gray-500">123</span>
+            </div>
+          </div>
+        </div>
+        <div className="mt-2 text-xs text-gray-500">
+          <div className="flex items-center space-x-1">
+            <span>🔒</span>
+            <span>Your payment information is secure</span>
+          </div>
+        </div>
+      </div>
+      
+      <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? "Processing..." : `Pay ₹${amount.toFixed(2)}`}
       </Button>
     </form>
@@ -435,19 +454,6 @@ export default function SendMoney() {
 
   // Render step 3 - Payment
   const renderPayment = () => {
-    if (!clientSecret) {
-      return (
-        <Card>
-          <CardContent className="p-6 flex items-center justify-center min-h-[300px]">
-            <div className="flex flex-col items-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-              <p>Initializing payment...</p>
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
-
     return (
       <Card>
         <CardHeader>
@@ -483,20 +489,10 @@ export default function SendMoney() {
 
           <Separator className="my-4" />
 
-          <Elements
-            stripe={stripePromise}
-            options={{
-              clientSecret,
-              appearance: {
-                theme: "stripe",
-              },
-            }}
-          >
-            <PaymentForm
-              amount={parseFloat(amount)}
-              onSuccess={handleTransactionComplete}
-            />
-          </Elements>
+          <PaymentForm
+            amount={parseFloat(amount)}
+            onSuccess={handleTransactionComplete}
+          />
         </CardContent>
       </Card>
     );
