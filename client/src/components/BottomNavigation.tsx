@@ -1,5 +1,6 @@
-import { useLocation, Link } from "wouter";
-import { Home, DollarSign, TrendingUp, Bot, User } from "lucide-react";
+import React from "react";
+import { Link, useLocation } from "wouter";
+import { Home, PieChart, Wallet, Settings, BarChart3 } from "lucide-react";
 
 interface NavItem {
   label: string;
@@ -14,57 +15,54 @@ export default function BottomNavigation() {
     {
       label: "Home",
       path: "/",
-      icon: <Home className="text-xl" />,
+      icon: <Home size={20} />,
+    },
+    {
+      label: "Finance",
+      path: "/finance",
+      icon: <BarChart3 size={20} />,
     },
     {
       label: "Payments",
-      path: "/send-money",
-      icon: <DollarSign className="text-xl" />,
+      path: "/payments",
+      icon: <Wallet size={20} />,
     },
     {
-      label: "Invest",
+      label: "Investments",
       path: "/investments",
-      icon: <TrendingUp className="text-xl" />,
-    },
-    {
-      label: "Advisor",
-      path: "/advisor",
-      icon: <Bot className="text-xl" />,
+      icon: <PieChart size={20} />,
     },
     {
       label: "Profile",
       path: "/profile",
-      icon: <User className="text-xl" />,
+      icon: <Settings size={20} />,
     },
   ];
 
+  const isActive = (path: string) => {
+    if (path === "/" && location === "/") return true;
+    if (path !== "/" && location.startsWith(path)) return true;
+    return false;
+  };
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-gray-700 shadow-lg py-2 z-50">
-      <div className="flex justify-around items-center">
-        {navItems.map((item) => {
-          const isActive = location === item.path;
-          return (
-            <Link key={item.path} href={item.path}>
-              <a
-                className={`flex flex-col items-center w-1/5 ${
-                  isActive
-                    ? "text-primary dark:text-primary"
-                    : "text-gray-500 dark:text-gray-400"
-                }`}
-              >
-                {item.icon}
-                <span
-                  className={`text-xs mt-1 ${
-                    isActive ? "font-medium" : ""
-                  }`}
-                >
-                  {item.label}
-                </span>
-              </a>
-            </Link>
-          );
-        })}
+    <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-gray-800 px-2 py-2 z-50">
+      <div className="flex justify-between items-center max-w-md mx-auto">
+        {navItems.map((item) => (
+          <Link 
+            href={item.path} 
+            key={item.path}
+            className={`flex flex-col items-center justify-center px-3 py-2 rounded-lg transition-colors ${
+              isActive(item.path)
+                ? "text-primary bg-primary/10 dark:bg-primary/20"
+                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+            }`}
+          >
+            {item.icon}
+            <span className="text-xs mt-1">{item.label}</span>
+          </Link>
+        ))}
       </div>
-    </nav>
+    </div>
   );
 }

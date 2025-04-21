@@ -1,14 +1,12 @@
 import { Switch, Route } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "@/components/theme-provider";
 import NotFound from "@/pages/not-found";
-import Login from "@/pages/auth/login";
+import LoginPage from "@/pages/auth/login-page";
 import OtpVerification from "@/pages/auth/otp-verification";
 import Home from "@/pages/home";
-import Payments from "@/pages/payments";
-import Finance from "@/pages/finance";
-import Profile from "@/pages/profile";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth, AuthProvider } from "@/contexts/auth-context";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { useLocation, useRoute } from "wouter";
@@ -36,15 +34,16 @@ function ProtectedRoute({ component: Component }: { component: React.FC }) {
 }
 
 function Router() {
-  // Temp fix for auth issue
   return (
     <Switch>
-      <Route path="/auth/login" component={Login} />
+      <Route path="/auth/login" component={LoginPage} />
       <Route path="/auth/otp-verification" component={OtpVerification} />
       <Route path="/" component={Home} />
-      <Route path="/payments" component={Payments} />
-      <Route path="/finance" component={Finance} />
-      <Route path="/profile" component={Profile} />
+      <Route path="/investments" component={Home} />
+      <Route path="/payments" component={Home} />
+      <Route path="/finance" component={Home} />
+      <Route path="/profile" component={Home} />
+      <Route path="/ai-advisor" component={Home} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -52,10 +51,14 @@ function Router() {
 
 function App() {
   return (
-    <TooltipProvider>
-      <Toaster />
-      <Router />
-    </TooltipProvider>
+    <ThemeProvider defaultTheme="light">
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

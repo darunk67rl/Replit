@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/auth-context";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { ShoppingBag, User, Coffee } from "lucide-react";
@@ -81,8 +81,8 @@ export default function RecentTransactions() {
       <CardHeader className="pb-2">
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg font-semibold">Recent Transactions</CardTitle>
-          <Link href="/transactions">
-            <a className="text-sm text-primary dark:text-primary font-medium">View All</a>
+          <Link href="/transactions" className="text-sm text-primary dark:text-primary font-medium">
+            View All
           </Link>
         </div>
       </CardHeader>
