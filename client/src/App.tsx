@@ -36,6 +36,8 @@ function ProtectedRoute({ component: Component }: { component: React.FC }) {
 // Import all our pages
 import Loans from "@/pages/loans";
 import AiAdvisor from "@/pages/ai-advisor";
+import Investments from "@/pages/investments";
+import SendMoney from "@/pages/send-money";
 
 function Router() {
   return (
@@ -49,6 +51,7 @@ function Router() {
       <Route path="/profile" component={Home} />
       <Route path="/ai-advisor" component={AiAdvisor} />
       <Route path="/loans" component={Loans} />
+      <Route path="/send-money" component={SendMoney} />
       <Route component={NotFound} />
     </Switch>
   );
