@@ -15,7 +15,7 @@ export const loadMockStripe = async () => {
               // Simulate mounting to DOM
               if (typeof domElement === 'string') {
                 const element = document.querySelector(domElement);
-                if (element) {
+                if (element && element instanceof HTMLElement) {
                   mockElementUI(element);
                 }
               } else if (domElement instanceof HTMLElement) {

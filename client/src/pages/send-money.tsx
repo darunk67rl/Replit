@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/auth-context";
+// Auth import removed temporarily
 import { useLocation } from "wouter";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -176,7 +176,8 @@ function PaymentForm({ amount, onSuccess }: { amount: number; onSuccess: () => v
 
 // Main send money component
 export default function SendMoney() {
-  const { user } = useAuth();
+  // Temporarily removed auth dependency
+  const user = null; // Mock user until auth is fixed
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");

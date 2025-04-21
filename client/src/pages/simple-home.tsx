@@ -52,6 +52,12 @@ export default function SimpleHome() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
+              <Link href="/send-money">
+                <Button className="flex-1 bg-white/10 hover:bg-white/20 text-white border-0">
+                  Send Money
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
@@ -95,7 +101,15 @@ export default function SimpleHome() {
                 icon: <BriefcaseBusiness size={22} />,
                 label: "Business",
                 bgColor: "bg-slate-100 dark:bg-slate-800",
-                iconColor: "text-slate-600 dark:text-slate-400"
+                iconColor: "text-slate-600 dark:text-slate-400",
+                link: "/ai-advisor"
+              },
+              {
+                icon: <ArrowRight size={22} />,
+                label: "Send Money",
+                bgColor: "bg-pink-100 dark:bg-pink-900/30",
+                iconColor: "text-pink-600 dark:text-pink-400",
+                link: "/send-money"
               },
               {
                 icon: <Receipt size={22} />,
@@ -109,19 +123,29 @@ export default function SimpleHome() {
                 bgColor: "bg-teal-100 dark:bg-teal-900/30",
                 iconColor: "text-teal-600 dark:text-teal-400"
               }
-            ].map((item, index) => (
-              <div
-                key={index}
-                className="flex flex-col items-center justify-center p-3 rounded-xl transition-transform hover:scale-105"
-              >
+            ].map((item, index) => {
+              const ServiceItem = () => (
                 <div
-                  className={`w-10 h-10 ${item.bgColor} rounded-full flex items-center justify-center mb-2`}
+                  key={index}
+                  className="flex flex-col items-center justify-center p-3 rounded-xl transition-transform hover:scale-105 cursor-pointer"
                 >
-                  <span className={item.iconColor}>{item.icon}</span>
+                  <div
+                    className={`w-10 h-10 ${item.bgColor} rounded-full flex items-center justify-center mb-2`}
+                  >
+                    <span className={item.iconColor}>{item.icon}</span>
+                  </div>
+                  <span className="text-xs font-medium dark:text-gray-200">{item.label}</span>
                 </div>
-                <span className="text-xs font-medium dark:text-gray-200">{item.label}</span>
-              </div>
-            ))}
+              );
+
+              return item.link ? (
+                <Link key={index} href={item.link}>
+                  <ServiceItem />
+                </Link>
+              ) : (
+                <ServiceItem key={index} />
+              );
+            })}
           </div>
         </section>
 
