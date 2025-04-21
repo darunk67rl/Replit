@@ -71,38 +71,43 @@ export default function SimpleHome() {
                 icon: <CreditCard size={22} />,
                 label: "Cards",
                 bgColor: "bg-blue-100 dark:bg-blue-900/30",
-                iconColor: "text-blue-600 dark:text-blue-400"
+                iconColor: "text-blue-600 dark:text-blue-400",
+                link: "/cards"
               },
               {
                 icon: <LineChart size={22} />,
                 label: "Invest",
                 bgColor: "bg-green-100 dark:bg-green-900/30",
-                iconColor: "text-green-600 dark:text-green-400"
+                iconColor: "text-green-600 dark:text-green-400",
+                link: "/investments"
               },
               {
                 icon: <Landmark size={22} />,
                 label: "Loans",
                 bgColor: "bg-purple-100 dark:bg-purple-900/30",
-                iconColor: "text-purple-600 dark:text-purple-400"
+                iconColor: "text-purple-600 dark:text-purple-400",
+                link: "/loans"
               },
               {
                 icon: <Zap size={22} />,
                 label: "Pay Bills",
                 bgColor: "bg-amber-100 dark:bg-amber-900/30",
-                iconColor: "text-amber-600 dark:text-amber-400"
+                iconColor: "text-amber-600 dark:text-amber-400",
+                link: "/pay-bills"
               },
               {
                 icon: <Shield size={22} />,
                 label: "Insurance",
                 bgColor: "bg-indigo-100 dark:bg-indigo-900/30",
-                iconColor: "text-indigo-600 dark:text-indigo-400"
+                iconColor: "text-indigo-600 dark:text-indigo-400",
+                link: "/insurance"
               },
               {
                 icon: <BriefcaseBusiness size={22} />,
                 label: "Business",
                 bgColor: "bg-slate-100 dark:bg-slate-800",
                 iconColor: "text-slate-600 dark:text-slate-400",
-                link: "/ai-advisor"
+                link: "/business"
               },
               {
                 icon: <ArrowRight size={22} />,
@@ -115,13 +120,15 @@ export default function SimpleHome() {
                 icon: <Receipt size={22} />,
                 label: "Rewards",
                 bgColor: "bg-orange-100 dark:bg-orange-900/30",
-                iconColor: "text-orange-600 dark:text-orange-400"
+                iconColor: "text-orange-600 dark:text-orange-400",
+                link: "/rewards"
               },
               {
                 icon: <Lightbulb size={22} />,
                 label: "AI Advisor",
                 bgColor: "bg-teal-100 dark:bg-teal-900/30",
-                iconColor: "text-teal-600 dark:text-teal-400"
+                iconColor: "text-teal-600 dark:text-teal-400",
+                link: "/ai-advisor"
               }
             ].map((item, index) => {
               const ServiceItem = () => (
