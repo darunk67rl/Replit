@@ -4,6 +4,29 @@ import { storage } from "./storage";
 import { z } from "zod";
 import * as openai from "./openai";
 import { setupAuth } from "./auth";
+// Stripe mock import - will be replaced with real Stripe when keys are available
+const stripeMock = {
+  paymentIntents: {
+    create: async ({ amount, currency, metadata }: any) => {
+      // Create a mock payment intent
+      return {
+        id: `pi_${Date.now()}`,
+        client_secret: `pi_${Date.now()}_secret_${Math.random().toString(36).substring(2, 10)}`,
+        amount,
+        currency,
+        metadata,
+        status: 'requires_payment_method'
+      };
+    },
+    capture: async (paymentIntentId: string) => {
+      // Mock capturing a payment intent
+      return {
+        id: paymentIntentId,
+        status: 'succeeded'
+      };
+    }
+  }
+};
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // HTTP server
@@ -61,17 +84,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Process the transaction (mock implementation)
-      const txnId = `TXN${Date.now()}`;
+      const transactionId = `TXN${Date.now()}`;
       const transaction = await storage.createTransaction({
-        ...result.data,
-        id: txnId,
-        status: "success",
-        timestamp: new Date()
+        amount: result.data.amount,
+        type: result.data.type,
+        date: new Date(),
+        userId: null,
+        merchant: result.data.recipient,
+        category: "transfer",
+        description: result.data.note || "UPI transaction"
       });
 
       res.status(200).json({
         message: "Transaction processed successfully",
-        transactionId: txnId,
+        transactionId: transaction.id,
         transaction
       });
     } catch (error) {
@@ -208,6 +234,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(200).json(chatHistory);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch chat history" });
+    }
+  });
+
+  // Payment processing routes
+  app.post("/api/create-payment-intent", async (req, res) => {
+    try {
+      const { amount, recipient } = req.body;
+      
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ message: "Invalid amount" });
+      }
+
+      // Create a payment intent with Stripe
+      const paymentIntent = await stripeMock.paymentIntents.create({
+        amount: Math.round(amount * 100), // Convert to cents/paise
+        currency: "inr",
+        metadata: {
+          recipient,
+          note: req.body.note || '',
+        },
+      });
+
+      // Create a transaction record in pending state
+      const transaction = await storage.createTransaction({
+        amount: Math.round(parseFloat(amount)),
+        type: "payment",
+        date: new Date(),
+        userId: null,
+        category: "transfer",
+        merchant: recipient || "Unknown recipient",
+        description: req.body.note || 'Payment via Stripe'
+      });
+
+      res.status(200).json({
+        clientSecret: paymentIntent.client_secret,
+        transaction
+      });
+    } catch (error) {
+      console.error("Payment intent creation error:", error);
+      res.status(500).json({ message: "Failed to create payment intent" });
+    }
+  });
+
+  // Payment success webhook (simplified for demo)
+  app.post("/api/payment-success", async (req, res) => {
+    try {
+      const { paymentIntentId } = req.body;
+
+      if (!paymentIntentId) {
+        return res.status(400).json({ message: "Missing payment intent ID" });
+      }
+
+      // Update transaction status
+      // In a real implementation, we would verify with Stripe first
+      const updatedPaymentIntent = await stripeMock.paymentIntents.capture(paymentIntentId);
+      
+      // Here we would update the transaction in the database
+      // For now we'll just return success
+      res.status(200).json({ 
+        status: "success", 
+        message: "Payment captured successfully"
+      });
+    } catch (error) {
+      console.error("Payment capture error:", error);
+      res.status(500).json({ message: "Failed to capture payment" });
     }
   });
 

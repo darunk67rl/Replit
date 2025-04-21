@@ -1,4 +1,16 @@
-import { Building, Receipt, BarChart3, Shield } from "lucide-react";
+import React from "react";
+import { useLocation } from "wouter";
+import {
+  CreditCard,
+  Landmark,
+  LineChart,
+  Zap,
+  Shield,
+  BriefcaseBusiness,
+  Receipt,
+  Lightbulb,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface QuickAccessItem {
   icon: JSX.Element;
@@ -9,58 +21,84 @@ interface QuickAccessItem {
 }
 
 export default function QuickAccess() {
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
+
   const quickAccessItems: QuickAccessItem[] = [
     {
-      icon: <Building className="h-5 w-5" />,
-      label: "Bank Transfer",
-      bgColor: "bg-blue-100 dark:bg-blue-900",
+      icon: <CreditCard size={22} />,
+      label: "Cards",
+      bgColor: "bg-blue-100 dark:bg-blue-900/30",
       iconColor: "text-blue-600 dark:text-blue-400",
-      onClick: () => console.log("Bank Transfer clicked"),
+      onClick: () => navigate("/cards"),
     },
     {
-      icon: <Receipt className="h-5 w-5" />,
-      label: "Pay Bills",
-      bgColor: "bg-green-100 dark:bg-green-900",
+      icon: <LineChart size={22} />,
+      label: "Invest",
+      bgColor: "bg-green-100 dark:bg-green-900/30",
       iconColor: "text-green-600 dark:text-green-400",
-      onClick: () => console.log("Pay Bills clicked"),
+      onClick: () => navigate("/investments"),
     },
     {
-      icon: <BarChart3 className="h-5 w-5" />,
-      label: "Investments",
-      bgColor: "bg-amber-100 dark:bg-amber-900",
-      iconColor: "text-amber-600 dark:text-amber-400",
-      onClick: () => console.log("Investments clicked"),
-    },
-    {
-      icon: <Shield className="h-5 w-5" />,
-      label: "Insurance",
-      bgColor: "bg-purple-100 dark:bg-purple-900",
+      icon: <Landmark size={22} />,
+      label: "Loans",
+      bgColor: "bg-purple-100 dark:bg-purple-900/30",
       iconColor: "text-purple-600 dark:text-purple-400",
-      onClick: () => console.log("Insurance clicked"),
+      onClick: () => navigate("/loans"),
+    },
+    {
+      icon: <Zap size={22} />,
+      label: "Pay Bills",
+      bgColor: "bg-amber-100 dark:bg-amber-900/30",
+      iconColor: "text-amber-600 dark:text-amber-400",
+      onClick: () => navigate("/bill-payments"),
+    },
+    {
+      icon: <Shield size={22} />,
+      label: "Insurance",
+      bgColor: "bg-indigo-100 dark:bg-indigo-900/30",
+      iconColor: "text-indigo-600 dark:text-indigo-400",
+      onClick: () => navigate("/insurance"),
+    },
+    {
+      icon: <BriefcaseBusiness size={22} />,
+      label: "Business",
+      bgColor: "bg-slate-100 dark:bg-slate-800",
+      iconColor: "text-slate-600 dark:text-slate-400",
+      onClick: () => navigate("/business"),
+    },
+    {
+      icon: <Receipt size={22} />,
+      label: "Rewards",
+      bgColor: "bg-orange-100 dark:bg-orange-900/30",
+      iconColor: "text-orange-600 dark:text-orange-400",
+      onClick: () => navigate("/rewards"),
+    },
+    {
+      icon: <Lightbulb size={22} />,
+      label: "AI Advisor",
+      bgColor: "bg-teal-100 dark:bg-teal-900/30",
+      iconColor: "text-teal-600 dark:text-teal-400",
+      onClick: () => navigate("/ai-advisor"),
     },
   ];
 
   return (
-    <div className="mb-6">
-      <h2 className="text-lg font-semibold mb-3 dark:text-gray-200">Quick Access</h2>
-      <div className="grid grid-cols-4 gap-3">
-        {quickAccessItems.map((item, index) => (
+    <div className="grid grid-cols-4 gap-3">
+      {quickAccessItems.map((item, index) => (
+        <button
+          key={index}
+          className="flex flex-col items-center justify-center p-3 rounded-xl transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
+          onClick={item.onClick}
+        >
           <div
-            key={index}
-            className="flex flex-col items-center cursor-pointer"
-            onClick={item.onClick}
+            className={`w-10 h-10 ${item.bgColor} rounded-full flex items-center justify-center mb-2`}
           >
-            <div
-              className={`w-12 h-12 rounded-full ${item.bgColor} flex items-center justify-center mb-1`}
-            >
-              <div className={item.iconColor}>{item.icon}</div>
-            </div>
-            <span className="text-xs text-center dark:text-gray-300">
-              {item.label}
-            </span>
+            <span className={item.iconColor}>{item.icon}</span>
           </div>
-        ))}
-      </div>
+          <span className="text-xs font-medium dark:text-gray-200">{item.label}</span>
+        </button>
+      ))}
     </div>
   );
 }

@@ -1,96 +1,87 @@
+import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, SendIcon, ArrowDown, QrCode } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/contexts/AuthContext";
-import { useState } from "react";
+import { useAuth } from "@/contexts/auth-context";
+import { Eye, EyeOff, RefreshCw, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "wouter";
 
 export default function BalanceCard() {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const { user, isLoading } = useAuth();
+  const [showBalance, setShowBalance] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Get default bank account
-  const { data: bankAccounts, isLoading } = useQuery({
-    queryKey: [`/api/users/${user?.id}/bank-accounts`],
-    enabled: !!user?.id,
-  });
-
-  // Find default account or use first account
-  const defaultAccount = bankAccounts?.find(
-    (account: any) => account.isDefault
-  ) || bankAccounts?.[0];
-
-  // Calculate total balance across all accounts
-  const totalBalance = bankAccounts?.reduce(
-    (total: number, account: any) => total + account.balance,
-    0
-  ) || 0;
-
-  const handleAddMoney = () => {
-    setLoading(true);
-    // This would normally open a modal or navigate to add money page
-    setTimeout(() => {
-      setLoading(false);
-    }, 500);
+  const toggleBalanceVisibility = () => {
+    setShowBalance(!showBalance);
   };
 
-  if (isLoading) {
-    return (
-      <Card className="bg-primary text-white rounded-xl p-5 mb-6">
-        <CardContent className="p-0">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h2 className="text-sm font-medium text-primary-200">Total Balance</h2>
-              <div className="flex items-baseline">
-                <Skeleton className="h-8 w-24 bg-white/20" />
-              </div>
-            </div>
-            <Skeleton className="h-8 w-8 rounded-full bg-white/20" />
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <Skeleton className="h-16 rounded-lg bg-white/10" />
-            <Skeleton className="h-16 rounded-lg bg-white/10" />
-            <Skeleton className="h-16 rounded-lg bg-white/10" />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    // In a real app, we would fetch the latest balance
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 1000);
+  };
+
+  // Format balance with rupee symbol and thousands separator
+  const formatCurrency = (amount: number | null | undefined) => {
+    if (amount === null || amount === undefined) return "₹ 0.00";
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 2
+    }).format(amount);
+  };
 
   return (
-    <Card className="bg-primary text-white rounded-xl p-5 mb-6">
-      <CardContent className="p-0">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h2 className="text-sm font-medium text-primary-200">Total Balance</h2>
-            <div className="flex items-baseline">
-              <span className="text-2xl font-bold">₹{totalBalance.toLocaleString("en-IN")}</span>
-              <span className="ml-2 text-xs bg-green-500 text-white px-1.5 py-0.5 rounded-full">+2.4%</span>
-            </div>
+    <Card className="overflow-hidden bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
+      <CardContent className="p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="font-medium">Total Balance</h3>
+          <div className="flex space-x-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-white/90 hover:text-white hover:bg-white/10"
+              onClick={toggleBalanceVisibility}
+            >
+              {showBalance ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-white/90 hover:text-white hover:bg-white/10"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+            </Button>
           </div>
-          <Button
-            size="sm"
-            onClick={handleAddMoney}
-            disabled={loading}
-            className="bg-white/20 text-white rounded-full p-1.5 hover:bg-white/30"
-          >
-            <Plus className="h-5 w-5" />
-          </Button>
         </div>
-        <div className="grid grid-cols-3 gap-2">
-          <Button variant="ghost" className="bg-white/10 rounded-lg p-3 flex flex-col items-center hover:bg-white/20">
-            <SendIcon className="h-5 w-5 mb-1" />
-            <span className="text-xs">Send</span>
-          </Button>
-          <Button variant="ghost" className="bg-white/10 rounded-lg p-3 flex flex-col items-center hover:bg-white/20">
-            <ArrowDown className="h-5 w-5 mb-1" />
-            <span className="text-xs">Request</span>
-          </Button>
-          <Button variant="ghost" className="bg-white/10 rounded-lg p-3 flex flex-col items-center hover:bg-white/20">
-            <QrCode className="h-5 w-5 mb-1" />
-            <span className="text-xs">Scan</span>
-          </Button>
+
+        <div className="mb-6">
+          {isLoading ? (
+            <Skeleton className="h-9 w-40 bg-white/20" />
+          ) : (
+            <h2 className="text-3xl font-bold">
+              {showBalance ? formatCurrency(user?.balance) : "₹ •••••••"}
+            </h2>
+          )}
+        </div>
+
+        <div className="flex space-x-2">
+          <Link href="/send-money">
+            <Button className="flex-1 bg-white/10 hover:bg-white/20 text-white border-0">
+              <ArrowUpRight className="mr-2 h-4 w-4" />
+              Send
+            </Button>
+          </Link>
+          <Link href="/receive-money">
+            <Button className="flex-1 bg-white/10 hover:bg-white/20 text-white border-0">
+              <ArrowDownLeft className="mr-2 h-4 w-4" />
+              Receive
+            </Button>
+          </Link>
         </div>
       </CardContent>
     </Card>

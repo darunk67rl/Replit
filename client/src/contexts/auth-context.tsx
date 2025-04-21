@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 
-// User interface from our schema
+// User interface from our schema - matches the database schema
 export interface User {
   id: number;
   username: string;
